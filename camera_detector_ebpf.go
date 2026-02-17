@@ -6,15 +6,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
+	"golang.org/x/sys/unix"
 )
 
-// TODO: the target is set to AMD64 only
+// TODO: the target is set to AMD64 only. Figure out a way to parameterize this.
 //go:generate go tool bpf2go -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
 
 type EBPFVb2IoctlStreamDetector struct {
@@ -56,7 +56,7 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	}
 	defer streamOffLink.Close()
 
-	reader, err := ringbuf.NewReader(objs.CameraEvents)
+	reader, err := ringbuf.NewReader(objs.CameraEventRingbuf)
 	if err != nil {
 		return fmt.Errorf("create ringbuf reader: %w", err)
 	}
@@ -83,67 +83,20 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			return fmt.Errorf("read ringbuf: %w", err)
 		}
 
-		var raw ebpfRawEvent
-		if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &raw); err != nil {
-			continue
-		}
-
-		event, ok := mapRawEventToCameraEvent(raw)
-		if !ok {
+		var ev camera_detector_vb2_ioctlCameraEvent
+		if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &ev); err != nil {
 			continue
 		}
 
 		select {
 		case <-ctx.Done():
 			return nil
-		case d.events <- event:
+		case d.events <- CameraEvent{
+			Type:          CameraEventType(ev.EventType),
+			VideoFilename: unix.ByteSliceToString(ev.Name[:]),
+		}:
 		}
 	}
-}
-
-type ebpfRawEvent struct {
-	EventType uint8
-	_         [3]byte
-	Name      [16]byte
-}
-
-func mapRawEventToCameraEvent(event ebpfRawEvent) (CameraEvent, bool) {
-	name := normalizeVideoFilename(cStringToGo(event.Name[:]))
-	if name == "" {
-		return CameraEvent{}, false
-	}
-
-	switch event.EventType {
-	case 1:
-		return CameraEvent{Type: CameraEventRecordingOn, VideoFilename: name}, true
-	case 2:
-		return CameraEvent{Type: CameraEventRecordingOff, VideoFilename: name}, true
-	default:
-		return CameraEvent{}, false
-	}
-}
-
-func normalizeVideoFilename(name string) string {
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
-		return ""
-	}
-
-	if strings.HasPrefix(trimmed, "/dev/") {
-		return trimmed
-	}
-
-	return "/dev/" + trimmed
-}
-
-func cStringToGo(raw []byte) string {
-	for index := range raw {
-		if raw[index] == 0 {
-			return string(raw[:index])
-		}
-	}
-
-	return string(raw)
 }
 
 var _ CameraDetector = (*EBPFVb2IoctlStreamDetector)(nil)

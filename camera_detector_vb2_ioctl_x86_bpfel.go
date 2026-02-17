@@ -8,9 +8,16 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
+
+type camera_detector_vb2_ioctlCameraEvent struct {
+	_         structs.HostLayout
+	EventType uint32
+	Name      [32]uint8
+}
 
 // loadCamera_detector_vb2_ioctl returns the embedded CollectionSpec for camera_detector_vb2_ioctl.
 func loadCamera_detector_vb2_ioctl() (*ebpf.CollectionSpec, error) {
@@ -62,7 +69,7 @@ type camera_detector_vb2_ioctlProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type camera_detector_vb2_ioctlMapSpecs struct {
-	CameraEvents *ebpf.MapSpec `ebpf:"camera_events"`
+	CameraEventRingbuf *ebpf.MapSpec `ebpf:"camera_event_ringbuf"`
 }
 
 // camera_detector_vb2_ioctlVariableSpecs contains global variables before they are loaded into the kernel.
@@ -91,12 +98,12 @@ func (o *camera_detector_vb2_ioctlObjects) Close() error {
 //
 // It can be passed to loadCamera_detector_vb2_ioctlObjects or ebpf.CollectionSpec.LoadAndAssign.
 type camera_detector_vb2_ioctlMaps struct {
-	CameraEvents *ebpf.Map `ebpf:"camera_events"`
+	CameraEventRingbuf *ebpf.Map `ebpf:"camera_event_ringbuf"`
 }
 
 func (m *camera_detector_vb2_ioctlMaps) Close() error {
 	return _Camera_detector_vb2_ioctlClose(
-		m.CameraEvents,
+		m.CameraEventRingbuf,
 	)
 }
 

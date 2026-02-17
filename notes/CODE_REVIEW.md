@@ -50,17 +50,3 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
   **Issue:** Test only verifies non-nil channel and does not exercise run/cancel/cleanup semantics.
   **Why it matters:** The most failure-prone logic is lifecycle/concurrency; current test coverage does not protect it.
   **Fix:** Add unit/integration tests for: cancellation while blocked on send, ringbuf-close behavior, non-context read error handling (including no deadlock), and channel/runner shutdown expectations.
-
-- **File:** `bpf/camera_detector.bpf.c`
-  **Function:** `emit_event`
-  **Lines:** 48-78
-  **Issue:** Event emission has no filtering/validation beyond dentry name presence; any streamon/off through this path is surfaced as camera activity.
-  **Why it matters:** Can create false positives if non-camera V4L2/video nodes trigger these functions in some environments.
-  **Fix:** Add stricter filtering criteria (where feasible in-kernel or userspace), and document known false-positive boundaries explicitly.
-
-- **File:** `camera_detector_ebpf.go`
-  **Function:** `normalizeVideoFilename`
-  **Lines:** 29-39
-  **Issue:** Non-empty non-`/dev/` input is blindly prefixed with `/dev/`, even if already absolute or malformed (e.g., `/tmp/x` -> `/dev//tmp/x`).
-  **Why it matters:** Assumptions are currently tied to dentry basename; if event source changes or malformed data appears, path output becomes invalid but looks normalized.
-  **Fix:** Enforce stricter expected pattern (`video[0-9]+`) or only normalize known-safe basenames; reject unexpected paths.

@@ -3,8 +3,9 @@ package cameracoordinator
 type CameraEventType uint8
 
 const (
-	CameraEventRecordingOn CameraEventType = iota
-	CameraEventRecordingOff
+	// Synchronize this with camera_event_type in bpf/camera_detector_vb2_ioctl.bpf.c
+	CameraEventRecordingOn  CameraEventType = 1
+	CameraEventRecordingOff CameraEventType = 2
 )
 
 type CameraEvent struct {
