@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
+	"log/slog"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
-	cameracoordinator "github.com/shuhaowu/CameraCoordinator"
+	"github.com/shuhaowu/cameracoordinator"
 )
 
 func main() {
@@ -17,38 +16,30 @@ func main() {
 	defer cancel()
 
 	detector := cameracoordinator.NewEBPFCameraDetector()
-	errCh := make(chan error, 1)
+	coord := cameracoordinator.NewCameraCoordinator(detector)
 
+	var wg sync.WaitGroup
+
+	// Run the coordinator in background; it logs errors itself and returns nil.
+	wg.Add(1)
 	go func() {
-		errCh <- detector.Run(ctx)
+		defer wg.Done()
+		slog.Info("detecting when camera recording starts/stops...")
+		_ = coord.Run(ctx)
 	}()
+
+	defer wg.Wait()
 
 	for {
 		select {
 		case <-ctx.Done():
-			err := <-errCh
-			if err != nil && !errors.Is(err, context.Canceled) {
-				log.Fatalf("detector stopped with error: %v", err)
-			}
 			return
-		case err := <-errCh:
-			if err != nil && !errors.Is(err, context.Canceled) {
-				log.Fatalf("detector stopped with error: %v", err)
-			}
-			return
-		case event := <-detector.Events():
-			fmt.Printf("%s event=%s device=%s\n", time.Now().Format(time.RFC3339Nano), eventTypeString(event.Type), event.VideoFilename)
+		case event := <-coord.Events():
+			slog.Info("camera event",
+				"time", time.Now().Format(time.RFC3339Nano),
+				"event", event.Type.String(),
+				"device", event.VideoFilename,
+			)
 		}
-	}
-}
-
-func eventTypeString(eventType cameracoordinator.CameraEventType) string {
-	switch eventType {
-	case cameracoordinator.CameraEventRecordingOn:
-		return "recording_on"
-	case cameracoordinator.CameraEventRecordingOff:
-		return "recording_off"
-	default:
-		return "unknown"
 	}
 }

@@ -64,13 +64,6 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
   **Why it matters:** Can create false positives if non-camera V4L2/video nodes trigger these functions in some environments.
   **Fix:** Add stricter filtering criteria (where feasible in-kernel or userspace), and document known false-positive boundaries explicitly.
 
-- **File:** `cmd/camera-detector/main.go`
-  **Function:** `main`
-  **Lines:** 28-31
-  **Issue:** On `ctx.Done()`, the code blocks waiting for `<-errCh`; if detector teardown hangs, CLI shutdown also hangs.
-  **Why it matters:** CLI responsiveness and clean exit depend on detector internals not stalling.
-  **Fix:** Use bounded wait (timeout/select) or ensure detector `Run` cannot deadlock; surface timeout diagnostics on forced shutdown.
-
 - **File:** `camera_detector_ebpf.go`
   **Function:** `normalizeVideoFilename`
   **Lines:** 29-39
