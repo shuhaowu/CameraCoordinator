@@ -15,6 +15,10 @@ Read documentations depending on the tasks
 
 ## Coding policy
 
+### General policy
+
+- Use `slog` package to log.
+
 ### Test policy
 
 - Add sufficient test coverage for code changes. Think of all the possible edge cases and comment inline in the tests on why these cases matter.
