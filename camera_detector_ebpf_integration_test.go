@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-func TestEBPFCameraDetectorAttachIntegration(t *testing.T) {
+func TestEBPFVb2IoctlStreamDetectorAttachIntegration(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("integration test requires root privileges")
 	}
 
-	detector := NewEBPFCameraDetector()
+	detector := NewEBPFVb2IoctlStreamDetector()
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 

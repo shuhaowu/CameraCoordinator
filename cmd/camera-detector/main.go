@@ -15,7 +15,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	detector := cameracoordinator.NewEBPFCameraDetector()
+	detector := cameracoordinator.NewEBPFVb2IoctlStreamDetector()
 	coord := cameracoordinator.NewCameraCoordinator(detector)
 
 	var wg sync.WaitGroup
