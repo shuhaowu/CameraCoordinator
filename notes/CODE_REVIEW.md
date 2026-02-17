@@ -23,20 +23,6 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
   **Why it matters:** A transient ringbuf read error can hang shutdown and leak resources/process termination.
   **Fix:** Remove the waiter goroutine entirely and close the reader from a context-aware path that cannot deadlock, or ensure defer order/goroutine exit condition is safe (e.g., goroutine exits on either `ctx.Done()` or a local `done` channel, and `reader.Close()` happens before `wg.Wait()`).
 
-- **File:** `camera_detector_ebpf.go`
-  **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
-  **Lines:** 79-80
-  **Issue:** Binary decode failures are silently dropped (`continue` with no accounting/logging).
-  **Why it matters:** Silent data-path corruption is hard to diagnose in production, especially under kernel/program mismatch.
-  **Fix:** Track and report decode failures (counter/log hook/returned wrapped error after threshold) so operators can detect malformed event streams.
-
-- **File:** `camera_detector_ebpf.go`
-  **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
-  **Line:** 79 (`binary.Read(bytes.NewReader(...))`)
-  **Issue:** Per-event decoding allocates/uses reflection-heavy path (`bytes.NewReader` + `binary.Read`) in the hot loop.
-  **Why it matters:** This is avoidable overhead in a potentially high-frequency path; it adds GC pressure and latency.
-  **Fix:** Decode using fixed-size checks plus direct copy/unmarshal without `binary.Read` reflection (e.g., manual field extraction or `unsafe` with strict size guards).
-
 - **File:** `camera_detector_ebpf_integration_test.go`
   **Function:** `TestEBPFVb2IoctlStreamDetectorAttachIntegration`
   **Line:** 28

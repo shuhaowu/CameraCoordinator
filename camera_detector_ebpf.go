@@ -10,7 +10,6 @@ import (
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
-	"github.com/cilium/ebpf/rlimit"
 	"golang.org/x/sys/unix"
 )
 
@@ -34,10 +33,6 @@ func (d *EBPFVb2IoctlStreamDetector) Events() <-chan CameraEvent {
 }
 
 func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
-	if err := rlimit.RemoveMemlock(); err != nil {
-		return fmt.Errorf("remove memlock rlimit: %w", err)
-	}
-
 	objs := camera_detector_vb2_ioctlObjects{}
 	if err := loadCamera_detector_vb2_ioctlObjects(&objs, nil); err != nil {
 		return fmt.Errorf("load bpf objects: %w", err)
@@ -71,9 +66,9 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	}()
 	defer wg.Wait()
 
+	var rec ringbuf.Record
 	for {
-		record, err := reader.Read()
-		if err != nil {
+		if err := reader.ReadInto(&rec); err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
 				return nil
 			}
@@ -84,8 +79,11 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 		}
 
 		var ev camera_detector_vb2_ioctlCameraEvent
-		if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &ev); err != nil {
-			continue
+		// binary.Read is a reflection based API and can be made more efficient if
+		// we implement decoder manually with. However this is not worth it for now
+		// as this event is not frequent.
+		if err := binary.Read(bytes.NewReader(rec.RawSample), binary.LittleEndian, &ev); err != nil {
+			return fmt.Errorf("decode camera event (len=%d): %w", len(rec.RawSample), err)
 		}
 
 		select {
