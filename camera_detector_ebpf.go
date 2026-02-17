@@ -1,11 +1,8 @@
 package cameracoordinator
 
 import (
-	"errors"
 	"strings"
 )
-
-var ErrEBPFUnavailable = errors.New("ebpf detector not available in this build")
 
 type ebpfRawEvent struct {
 	EventType uint8

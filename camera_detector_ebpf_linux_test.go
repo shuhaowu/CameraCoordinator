@@ -1,5 +1,3 @@
-//go:build linux && ebpf
-
 package cameracoordinator
 
 import "testing"

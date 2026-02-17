@@ -1,0 +1,17 @@
+{
+  "chat.agent.maxRequests": 500,
+  "chat.tools.terminal.autoApprove": {
+    "/^go test ./...$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^go build ./...$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^go generate ./...$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+  }
+}

@@ -1,4 +1,4 @@
-//go:build linux && ebpf && integration
+//go:build integration
 
 package cameracoordinator
 
