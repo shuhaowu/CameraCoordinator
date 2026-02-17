@@ -1,0 +1,24 @@
+{
+  "name": "CameraCoordinator",
+  "dockerFile": "Dockerfile",
+  "overrideCommand": false,
+  "init": true,
+  "remoteUser": "dev",
+  "updateRemoteUserUID": true,
+  "privileged": true,
+  "containerEnv": {
+    "WORKSPACE_FOLDER": "${containerWorkspaceFolder}"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "telemetry.telemetryLevel": "off",
+        "telemetry.enableTelemetry": false,
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "golang.go"
+      ]
+    }
+  }
+}

@@ -14,7 +14,8 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-strip -target amd64 -cc clang -cflags "-O2 -g -I$GOPATH/pkg/mod/github.com/cilium/ebpf@v0.20.0/examples/headers" cameraDetector bpf/camera_detector.bpf.c
+// TODO: the target is set to AMD64 only
+//go:generate go tool bpf2go -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
 
 type EBPFVb2IoctlStreamDetector struct {
 	events chan CameraEvent
@@ -37,8 +38,8 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 		return fmt.Errorf("remove memlock rlimit: %w", err)
 	}
 
-	objs := cameraDetectorObjects{}
-	if err := loadCameraDetectorObjects(&objs, nil); err != nil {
+	objs := camera_detector_vb2_ioctlObjects{}
+	if err := loadCamera_detector_vb2_ioctlObjects(&objs, nil); err != nil {
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
 	defer objs.Close()

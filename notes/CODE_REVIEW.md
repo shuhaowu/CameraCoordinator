@@ -16,32 +16,26 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
 
 # Inline Comments
 
--- **File:** `camera_detector_ebpf_linux.go`
+-- **File:** `camera_detector_ebpf.go`
   **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
   **Line:** 64 (`defer wg.Wait()`), with related lines 55 (`defer reader.Close()`), 67-75 (read loop error return)
   **Issue:** There is a deadlock path. If `reader.Read()` returns a non-`ErrClosed` error while `ctx` is not canceled, the function returns from line 75, then executes defers in LIFO order. `wg.Wait()` runs before `reader.Close()`, but the goroutine only exits on `<-ctx.Done()`, so `wg.Wait()` can block forever.
   **Why it matters:** A transient ringbuf read error can hang shutdown and leak resources/process termination.
   **Fix:** Remove the waiter goroutine entirely and close the reader from a context-aware path that cannot deadlock, or ensure defer order/goroutine exit condition is safe (e.g., goroutine exits on either `ctx.Done()` or a local `done` channel, and `reader.Close()` happens before `wg.Wait()`).
 
-- **File:** `camera_detector_ebpf_linux.go`
+- **File:** `camera_detector_ebpf.go`
   **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
   **Lines:** 79-80
   **Issue:** Binary decode failures are silently dropped (`continue` with no accounting/logging).
   **Why it matters:** Silent data-path corruption is hard to diagnose in production, especially under kernel/program mismatch.
   **Fix:** Track and report decode failures (counter/log hook/returned wrapped error after threshold) so operators can detect malformed event streams.
 
-- **File:** `camera_detector_ebpf_linux.go`
+- **File:** `camera_detector_ebpf.go`
   **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
   **Line:** 79 (`binary.Read(bytes.NewReader(...))`)
   **Issue:** Per-event decoding allocates/uses reflection-heavy path (`bytes.NewReader` + `binary.Read`) in the hot loop.
   **Why it matters:** This is avoidable overhead in a potentially high-frequency path; it adds GC pressure and latency.
   **Fix:** Decode using fixed-size checks plus direct copy/unmarshal without `binary.Read` reflection (e.g., manual field extraction or `unsafe` with strict size guards).
-
-- **File:** `camera_detector_ebpf_linux.go`
-  **Line:** 16
-  **Issue:** `go:generate` hardcodes a versioned header include path under `$GOPATH/pkg/mod/...@v0.20.0/...`.
-  **Why it matters:** Fragile/non-reproducible across machines, module cache layouts, and version bumps; this will frequently break regeneration.
-  **Fix:** Use a stable include strategy (checked-in headers, `clang` include paths from project-local directory, or derive module path dynamically in script).
 
 - **File:** `camera_detector_ebpf_integration_test.go`
   **Function:** `TestEBPFVb2IoctlStreamDetectorAttachIntegration`
@@ -50,7 +44,7 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
   **Why it matters:** Brittle and can mask real regressions if error messages change or overlap unexpectedly.
   **Fix:** Prefer typed/sentinel error wrapping from production code and assert with `errors.Is` / structured conditions.
 
-- **File:** `camera_detector_ebpf_linux_test.go`
+- **File:** `camera_detector_ebpf_test.go`
   **Function:** `TestEBPFDetectorEventsChannelInitialized`
   **Lines:** 5-11
   **Issue:** Test only verifies non-nil channel and does not exercise run/cancel/cleanup semantics.

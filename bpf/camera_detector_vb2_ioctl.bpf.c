@@ -1,31 +1,10 @@
-#include "common.h"
-#include "bpf_tracing.h"
+//go:build ignore
 
-struct qstr {
-    union {
-        struct {
-            __u32 hash;
-            __u32 len;
-        };
-        __u64 hash_len;
-    };
-    const unsigned char *name;
-} __attribute__((preserve_access_index));
+#include "vmlinux.h"
 
-struct dentry {
-    struct qstr d_name;
-} __attribute__((preserve_access_index));
-
-struct vfsmount;
-
-struct path {
-    struct vfsmount *mnt;
-    struct dentry *dentry;
-} __attribute__((preserve_access_index));
-
-struct file {
-    struct path f_path;
-} __attribute__((preserve_access_index));
+#include <bpf/bpf_core_read.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 
 char LICENSE[] SEC("license") = "GPL";
 
@@ -47,7 +26,6 @@ struct {
 
 static __always_inline int emit_event(struct file *file, __u8 event_type)
 {
-    struct dentry *dentry;
     const unsigned char *name_ptr;
     struct camera_event *event;
 
@@ -55,16 +33,7 @@ static __always_inline int emit_event(struct file *file, __u8 event_type)
         return 0;
     }
 
-    if (bpf_probe_read_kernel(&dentry, sizeof(dentry), &file->f_path.dentry) != 0) {
-        return 0;
-    }
-    if (!dentry) {
-        return 0;
-    }
-
-    if (bpf_probe_read_kernel(&name_ptr, sizeof(name_ptr), &dentry->d_name.name) != 0) {
-        return 0;
-    }
+    name_ptr = BPF_CORE_READ(file, f_path.dentry, d_name.name);
     if (!name_ptr) {
         return 0;
     }
