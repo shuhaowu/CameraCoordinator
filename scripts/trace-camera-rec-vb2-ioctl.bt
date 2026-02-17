@@ -1,0 +1,37 @@
+#!/usr/bin/bpftrace -v
+
+kprobe:vb2_ioctl_streamon
+{
+  $file = (struct file *) arg0;
+  if ($file == 0) {
+    printf("vb2_ioctl_streamon detected but file == 0\n");
+    return;
+  }
+
+  $dentry = $file->f_path.dentry;
+  if ($dentry == 0) {
+    printf("vb2_ioctl_streamon: dentry == 0\n");
+    return;
+  }
+
+  $name = $dentry->d_name.name;
+  printf("vb2_ioctl_streamon: file=%s\n", str($name)); // This will give video0, video1, etc.
+}
+
+kprobe:vb2_ioctl_streamoff
+{
+  $file = (struct file *) arg0;
+  if ($file == 0) {
+    printf("vb2_ioctl_streamoff detected but file == 0\n");
+    return;
+  }
+
+  $dentry = $file->f_path.dentry;
+  if ($dentry == 0) {
+    printf("vb2_ioctl_streamoff: dentry == 0\n");
+    return;
+  }
+
+  $name = $dentry->d_name.name;
+  printf("vb2_ioctl_streamoff: file=%s\n", str($name));
+}
