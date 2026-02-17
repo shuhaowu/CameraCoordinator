@@ -34,7 +34,12 @@ func main() {
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-coord.Events():
+		case event, open := <-coord.Events():
+			if !open {
+				slog.Info("event channel closed, exiting")
+				return
+			}
+
 			slog.Info("camera event",
 				"time", time.Now().Format(time.RFC3339Nano),
 				"event", event.Type.String(),

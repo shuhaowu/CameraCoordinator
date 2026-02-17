@@ -40,9 +40,7 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 		det := d
 
 		// feeder: copy events from child detector to coordinator channel
-		feedersWg.Add(1)
-		go func() {
-			defer feedersWg.Done()
+		feedersWg.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -58,18 +56,16 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					}
 				}
 			}
-		}()
+		})
 
 		// runner: execute detector lifecycle and log errors
-		runnersWg.Add(1)
-		go func() {
-			defer runnersWg.Done()
+		runnersWg.Go(func() {
 			if err := det.Run(ctx); err != nil {
 				if !errors.Is(err, context.Canceled) {
 					slog.Error("detector run error", "detector", det.Name(), "err", err)
 				}
 			}
-		}()
+		})
 	}
 
 	// Wait for all runners to finish. We do not return their errors; we log
@@ -82,5 +78,6 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 	// Wait for feeders to exit and close events channel.
 	feedersWg.Wait()
 	close(c.events)
+
 	return nil
 }

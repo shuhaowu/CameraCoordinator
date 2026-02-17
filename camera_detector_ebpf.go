@@ -55,46 +55,55 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create ringbuf reader: %w", err)
 	}
-	defer reader.Close()
 
+	// Run the read loop in a goroutine and report its result via errCh. This is
+	// needed because reader.ReadInto can block indefinitely, and we need a way to
+	// unblock it when the context is cancelled.
+	errCh := make(chan error, 1)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-ctx.Done()
+
+	wg.Go(func() {
+		var rec ringbuf.Record
+		for {
+			if err := reader.ReadInto(&rec); err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					errCh <- nil
+					return
+				}
+				errCh <- fmt.Errorf("read ringbuf: %w", err)
+				return
+			}
+
+			var ev camera_detector_vb2_ioctlCameraEvent
+			if err := binary.Read(bytes.NewReader(rec.RawSample), binary.LittleEndian, &ev); err != nil {
+				errCh <- fmt.Errorf("decode camera event (len=%d): %w", len(rec.RawSample), err)
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				errCh <- nil
+				return
+			case d.events <- CameraEvent{
+				Type:          CameraEventType(ev.EventType),
+				VideoFilename: unix.ByteSliceToString(ev.Name[:]),
+			}:
+			}
+		}
+	})
+
+	// Wait for either context cancellation or the reader goroutine to finish.
+	select {
+	case <-ctx.Done():
+		// Close the reader to unblock the goroutine if it's blocked in ReadInto.
 		_ = reader.Close()
-	}()
-	defer wg.Wait()
-
-	var rec ringbuf.Record
-	for {
-		if err := reader.ReadInto(&rec); err != nil {
-			if errors.Is(err, ringbuf.ErrClosed) {
-				return nil
-			}
-			if errors.Is(ctx.Err(), context.Canceled) {
-				return nil
-			}
-			return fmt.Errorf("read ringbuf: %w", err)
-		}
-
-		var ev camera_detector_vb2_ioctlCameraEvent
-		// binary.Read is a reflection based API and can be made more efficient if
-		// we implement decoder manually with. However this is not worth it for now
-		// as this event is not frequent.
-		if err := binary.Read(bytes.NewReader(rec.RawSample), binary.LittleEndian, &ev); err != nil {
-			return fmt.Errorf("decode camera event (len=%d): %w", len(rec.RawSample), err)
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case d.events <- CameraEvent{
-			Type:          CameraEventType(ev.EventType),
-			VideoFilename: unix.ByteSliceToString(ev.Name[:]),
-		}:
-		}
+	case err = <-errCh:
+		_ = reader.Close()
 	}
+
+	wg.Wait()
+	close(d.events)
+	return err
 }
 
 var _ CameraDetector = (*EBPFVb2IoctlStreamDetector)(nil)

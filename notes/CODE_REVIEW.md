@@ -16,13 +16,6 @@ Overall feeling: **not production-ready yet**. The core idea is sound, but criti
 
 # Inline Comments
 
--- **File:** `camera_detector_ebpf.go`
-  **Function:** `(*EBPFVb2IoctlStreamDetector).Run`
-  **Line:** 64 (`defer wg.Wait()`), with related lines 55 (`defer reader.Close()`), 67-75 (read loop error return)
-  **Issue:** There is a deadlock path. If `reader.Read()` returns a non-`ErrClosed` error while `ctx` is not canceled, the function returns from line 75, then executes defers in LIFO order. `wg.Wait()` runs before `reader.Close()`, but the goroutine only exits on `<-ctx.Done()`, so `wg.Wait()` can block forever.
-  **Why it matters:** A transient ringbuf read error can hang shutdown and leak resources/process termination.
-  **Fix:** Remove the waiter goroutine entirely and close the reader from a context-aware path that cannot deadlock, or ensure defer order/goroutine exit condition is safe (e.g., goroutine exits on either `ctx.Done()` or a local `done` channel, and `reader.Close()` happens before `wg.Wait()`).
-
 - **File:** `camera_detector_ebpf_integration_test.go`
   **Function:** `TestEBPFVb2IoctlStreamDetectorAttachIntegration`
   **Line:** 28
