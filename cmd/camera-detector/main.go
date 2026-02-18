@@ -16,8 +16,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	discovery := &cameracoordinator.CameraDiscoveryV4L2{}
-	cameras, err := discovery.Discover()
+	cameras, err := cameracoordinator.V4L2DiscoverDevices()
 	if err != nil {
 		slog.Error("failed to discover cameras", "err", err)
 	} else {
@@ -32,10 +31,11 @@ func main() {
 			info := cameras[device]
 			slog.Info("camera",
 				"device", device,
-				"card", info.Card,
-				"driver", info.Driver,
-				"bus_info", info.BusInfo,
-				"version", info.Version,
+				"card", info.CardString(),
+				"driver", info.DriverString(),
+				"bus_info", info.BusInfoString(),
+				"version", info.VersionString(),
+				"is_video_capture", info.HasCapabilities(cameracoordinator.V4L2CapVideoCapture),
 				"capabilities", info.Capabilities,
 				"device_caps", info.DeviceCaps,
 			)
@@ -70,7 +70,7 @@ func main() {
 			slog.Info("camera event",
 				"time", time.Now().Format(time.RFC3339Nano),
 				"event", event.Type.String(),
-				"device", event.VideoFilename,
+				"device", event.VideoDevice,
 			)
 		}
 	}

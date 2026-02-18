@@ -7,6 +7,7 @@ ARG USER_GID=$USER_UID
 RUN set -xe; \
     groupadd --gid $USER_GID $USERNAME; \
     useradd --uid $USER_UID --gid $USER_GID -s /bin/bash -m $USERNAME; \
+    usermod -a -G video $USERNAME; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt-get update; \
     apt-get install -y sudo; \

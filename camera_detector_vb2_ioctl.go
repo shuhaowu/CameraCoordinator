@@ -75,9 +75,25 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			}
 
 			var ev camera_detector_vb2_ioctlCameraEvent
+			// TODO: is this always little endian?
 			if err := binary.Read(bytes.NewReader(rec.RawSample), binary.LittleEndian, &ev); err != nil {
 				errCh <- fmt.Errorf("decode camera event (len=%d): %w", len(rec.RawSample), err)
 				return
+			}
+
+			// Determine device name and only send events for V4L2 capture devices.
+			devName := unix.ByteSliceToString(ev.Name[:])
+
+			// This will run a syscall on every event. It shouldn't be a bottleneck
+			// because video on/off should not happen that often.
+			cap, err := V4L2DeviceCapability(devName)
+			if err != nil {
+				// Unable to query device capability; skip this event.
+				continue
+			}
+			if !cap.HasCapabilities(V4L2CapVideoCapture) {
+				// Not a camera device according to V4L2 capabilities; skip.
+				continue
 			}
 
 			select {
@@ -85,8 +101,8 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 				errCh <- nil
 				return
 			case d.events <- CameraEvent{
-				Type:          CameraEventType(ev.EventType),
-				VideoFilename: unix.ByteSliceToString(ev.Name[:]),
+				Type:        CameraEventType(ev.EventType),
+				VideoDevice: devName,
 			}:
 			}
 		}

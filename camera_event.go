@@ -11,7 +11,7 @@ const (
 type CameraEvent struct {
 	Type CameraEventType
 
-	VideoFilename string
+	VideoDevice string
 }
 
 func (t CameraEventType) String() string {
