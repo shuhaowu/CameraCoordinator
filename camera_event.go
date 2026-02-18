@@ -9,8 +9,13 @@ const (
 )
 
 type CameraEvent struct {
+	// The string identifying the detector that emitted this event. This is useful for debugging.
+	Detector string
+
+	// The type of the event.
 	Type CameraEventType
 
+	// The video device file associated with this event, e.g. "video0".
 	VideoDevice string
 }
 

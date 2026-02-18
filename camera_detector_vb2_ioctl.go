@@ -16,6 +16,8 @@ import (
 // TODO: the target is set to AMD64 only. Figure out a way to parameterize this.
 //go:generate go tool bpf2go -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
 
+const ebpfVb2IoctlDetectorName = "ebpf/vb2_ioctl_stream{on,off}"
+
 type EBPFVb2IoctlStreamDetector struct {
 	events chan CameraEvent
 }
@@ -25,7 +27,7 @@ func NewEBPFVb2IoctlStreamDetector() *EBPFVb2IoctlStreamDetector {
 }
 
 func (d *EBPFVb2IoctlStreamDetector) Name() string {
-	return "ebpf/vb2_ioctl_stream{on,off}"
+	return ebpfVb2IoctlDetectorName
 }
 
 func (d *EBPFVb2IoctlStreamDetector) Events() <-chan CameraEvent {
@@ -101,6 +103,7 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 				errCh <- nil
 				return
 			case d.events <- CameraEvent{
+				Detector:    ebpfVb2IoctlDetectorName,
 				Type:        CameraEventType(ev.EventType),
 				VideoDevice: devName,
 			}:

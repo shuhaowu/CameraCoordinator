@@ -23,24 +23,45 @@ func (c *CameraCoordinator) Events() <-chan CameraEvent {
 	return c.events
 }
 
-// Run starts all child detectors and fans their events into the coordinator
-// event channel. It waits for all child detectors to exit, logs any non-
-// canceled errors via the slog package, and always returns nil. The
-// coordinator closes its events channel before returning.
+// Run starts the child detectors and monitors for camera on/off events
+// statefully. Internally, it has three groups of goroutines:
+//
+//  1. A group of detector goroutines that runs the detector logic.
+//  2. A group of forwarder goroutines that forwards the events channel from each
+//     detector into a single channel
+//  3. A single event handler goroutine that receives all events from all
+//     detectors and statefully tracks the camera on/off state.
+//
+// A camera on event is generated on the first event from the detectors for that
+// device. A camera off event is generated on the last event from the detectors
+// for that device.
 func (c *CameraCoordinator) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	var feedersWg sync.WaitGroup
-	var runnersWg sync.WaitGroup
+	logger := slog.With("component", "CameraCoordinator")
 
-	// Start feeders and detector runners.
+	allEvents := make(chan CameraEvent)
+
+	var detectorWg sync.WaitGroup
+	var forwarderWg sync.WaitGroup
+	var eventHandlerWg sync.WaitGroup
 	for _, d := range c.detectors {
-		// Capture local loop variable for goroutines.
 		det := d
 
-		// feeder: copy events from child detector to coordinator channel
-		feedersWg.Go(func() {
+		detectorWg.Go(func() {
+			innerLogger := logger.With("detector", det.Name())
+			innerLogger.Debug("starting detector")
+			defer innerLogger.Debug("stopping detector")
+
+			err := det.Run(ctx)
+			if err != nil && !errors.Is(err, context.Canceled) {
+				innerLogger.Error("detector ran into an error", "err", err)
+				// TODO: send the error back!
+			}
+		})
+
+		forwarderWg.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -49,35 +70,97 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					if !ok {
 						return
 					}
+
 					select {
 					case <-ctx.Done():
 						return
-					case c.events <- ev:
+					case allEvents <- ev:
 					}
-				}
-			}
-		})
-
-		// runner: execute detector lifecycle and log errors
-		runnersWg.Go(func() {
-			if err := det.Run(ctx); err != nil {
-				if !errors.Is(err, context.Canceled) {
-					slog.Error("detector run error", "detector", det.Name(), "err", err)
 				}
 			}
 		})
 	}
 
-	// Wait for all runners to finish. We do not return their errors; we log
-	// them above and always return nil as requested.
-	runnersWg.Wait()
+	eventHandlerWg.Go(func() {
+		// Track active "on" counts per video device. The coordinator emits a
+		// CameraEventRecordingOn when the count transitions 0->1 and emits a
+		// CameraEventRecordingOff when the count transitions 1->0.
+		active := make(map[string]int)
 
-	// Signal feeders to stop (in case detectors did not close their event channels).
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-allEvents:
+				if !ok {
+					return
+				}
+
+				logger.Debug("received event",
+					"detector", ev.Detector,
+					"type", ev.Type.String(),
+					"video_device", ev.VideoDevice,
+				)
+
+				switch ev.Type {
+				case CameraEventRecordingOn:
+					prev := active[ev.VideoDevice]
+					active[ev.VideoDevice] = prev + 1
+					if prev == 0 {
+						// first active detector for this device -> forward ON
+						logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
+						c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice})
+					}
+
+				case CameraEventRecordingOff:
+					prev, ok := active[ev.VideoDevice]
+					if !ok || prev == 0 {
+						// stray/off without prior on -> ignore
+						continue
+					}
+
+					if prev == 1 {
+						// last active detector -> forward OFF and remove state
+						delete(active, ev.VideoDevice)
+						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
+						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
+					} else {
+						active[ev.VideoDevice] = prev - 1
+					}
+
+				default:
+					logger.Warn("unknown event type", "type", ev.Type, "video_device", ev.VideoDevice, "detector", ev.Detector)
+				}
+			}
+		}
+	})
+
+	detectorWg.Wait()
+
+	logger.Debug("all detector has quit, waiting for forwarders to finish...")
+
+	// If all detectors have quit or failed, cancel the remaining goroutines.
 	cancel()
 
-	// Wait for feeders to exit and close events channel.
-	feedersWg.Wait()
+	forwarderWg.Wait()
+
+	logger.Debug("all forwarder has quit, waiting for event handler to finish...")
+
+	eventHandlerWg.Wait()
+
+	logger.Debug("camera coordinator done")
+
 	close(c.events)
 
 	return nil
+}
+
+// emitEvent sends an event to the public events channel but respects the
+// provided context (returns immediately if ctx is done).
+func (c *CameraCoordinator) emitEvent(ctx context.Context, ev CameraEvent) {
+	select {
+	case <-ctx.Done():
+		return
+	case c.events <- ev:
+	}
 }
