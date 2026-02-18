@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os/signal"
+	"sort"
 	"sync"
 	"syscall"
 	"time"
@@ -14,6 +15,32 @@ import (
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	discovery := &cameracoordinator.CameraDiscoveryV4L2{}
+	cameras, err := discovery.Discover()
+	if err != nil {
+		slog.Error("failed to discover cameras", "err", err)
+	} else {
+		keys := make([]string, 0, len(cameras))
+		for k := range cameras {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		slog.Info("discovered cameras", "count", len(keys))
+		for _, device := range keys {
+			info := cameras[device]
+			slog.Info("camera",
+				"device", device,
+				"card", info.Card,
+				"driver", info.Driver,
+				"bus_info", info.BusInfo,
+				"version", info.Version,
+				"capabilities", info.Capabilities,
+				"device_caps", info.DeviceCaps,
+			)
+		}
+	}
 
 	detector := cameracoordinator.NewEBPFVb2IoctlStreamDetector()
 	coord := cameracoordinator.NewCameraCoordinator(detector)
