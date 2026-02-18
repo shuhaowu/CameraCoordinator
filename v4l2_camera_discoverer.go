@@ -1,7 +1,6 @@
 package cameracoordinator
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -71,6 +70,7 @@ func V4L2DiscoverDevices() (map[string]V4L2Capability, error) {
 	candidates := []string{}
 
 	// Collect /dev/v4l/by-id entries if available.
+	// May check /dev/v4l/by-path in the future as well but not for now.
 	for _, byIDPath := range []string{"/dev/v4l/by-id"} {
 		entries, err := os.ReadDir(byIDPath)
 		if err != nil {
@@ -82,12 +82,7 @@ func V4L2DiscoverDevices() (map[string]V4L2Capability, error) {
 
 		for _, entry := range entries {
 			candidate := filepath.Join(byIDPath, entry.Name())
-			if resolved, err := filepath.EvalSymlinks(candidate); err == nil {
-				candidate = resolved
-			}
-			if strings.HasPrefix(filepath.Base(candidate), "video") {
-				candidates = append(candidates, candidate)
-			}
+			candidates = append(candidates, candidate)
 		}
 	}
 
@@ -151,15 +146,15 @@ func V4L2DeviceCapability(filename string) (V4L2Capability, error) {
 }
 
 func (c V4L2Capability) DriverString() string {
-	return cString(c.Driver[:])
+	return unix.ByteSliceToString(c.Driver[:])
 }
 
 func (c V4L2Capability) CardString() string {
-	return cString(c.Card[:])
+	return unix.ByteSliceToString(c.Card[:])
 }
 
 func (c V4L2Capability) BusInfoString() string {
-	return cString(c.BusInfo[:])
+	return unix.ByteSliceToString(c.BusInfo[:])
 }
 
 func (c V4L2Capability) VersionString() string {
@@ -185,11 +180,4 @@ func (c V4L2Capability) HasCapabilities(caps ...V4L2CapabilityCapabilities) bool
 		}
 	}
 	return true
-}
-
-func cString(b []byte) string {
-	if i := bytes.IndexByte(b, 0); i >= 0 {
-		return string(b[:i])
-	}
-	return string(bytes.TrimRight(b, "\x00"))
 }

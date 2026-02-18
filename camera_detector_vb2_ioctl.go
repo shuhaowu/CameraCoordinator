@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/cilium/ebpf/link"
@@ -16,14 +17,18 @@ import (
 // TODO: the target is set to AMD64 only. Figure out a way to parameterize this.
 //go:generate go tool bpf2go -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
 
-const ebpfVb2IoctlDetectorName = "ebpf/vb2_ioctl_stream{on,off}"
+const ebpfVb2IoctlDetectorName = "EBPFVb2IoctlStreamDetector"
 
 type EBPFVb2IoctlStreamDetector struct {
 	events chan CameraEvent
+	logger *slog.Logger
 }
 
 func NewEBPFVb2IoctlStreamDetector() *EBPFVb2IoctlStreamDetector {
-	return &EBPFVb2IoctlStreamDetector{events: make(chan CameraEvent)}
+	return &EBPFVb2IoctlStreamDetector{
+		events: make(chan CameraEvent),
+		logger: slog.With("component", ebpfVb2IoctlDetectorName),
+	}
 }
 
 func (d *EBPFVb2IoctlStreamDetector) Name() string {
@@ -58,12 +63,12 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 		return fmt.Errorf("create ringbuf reader: %w", err)
 	}
 
-	// Run the read loop in a goroutine and report its result via errCh. This is
-	// needed because reader.ReadInto can block indefinitely, and we need a way to
-	// unblock it when the context is cancelled.
 	errCh := make(chan error, 1)
 	var wg sync.WaitGroup
 
+	// Run the read loop in a goroutine and report its result via errCh. This is
+	// needed because reader.ReadInto can block indefinitely, and we need a way to
+	// unblock it when the context is cancelled.
 	wg.Go(func() {
 		var rec ringbuf.Record
 		for {
@@ -77,8 +82,7 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			}
 
 			var ev camera_detector_vb2_ioctlCameraEvent
-			// TODO: is this always little endian?
-			if err := binary.Read(bytes.NewReader(rec.RawSample), binary.LittleEndian, &ev); err != nil {
+			if err := binary.Read(bytes.NewReader(rec.RawSample), binary.NativeEndian, &ev); err != nil {
 				errCh <- fmt.Errorf("decode camera event (len=%d): %w", len(rec.RawSample), err)
 				return
 			}
@@ -90,10 +94,12 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			// because video on/off should not happen that often.
 			cap, err := V4L2DeviceCapability(devName)
 			if err != nil {
-				// Unable to query device capability; skip this event.
+				d.logger.Warn("failed to query V4L2 capabilities", "err", err, "video_device", devName)
 				continue
 			}
+
 			if !cap.HasCapabilities(V4L2CapVideoCapture) {
+				d.logger.Debug("device is not a camera, ignoring...", "video_device", devName)
 				// Not a camera device according to V4L2 capabilities; skip.
 				continue
 			}

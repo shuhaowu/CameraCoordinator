@@ -1,6 +1,6 @@
 package cameracoordinator
 
-type CameraEventType uint8
+type CameraEventType uint32
 
 const (
 	// Synchronize this with camera_event_type in bpf/camera_detector_vb2_ioctl.bpf.c

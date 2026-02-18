@@ -54,9 +54,9 @@ func TestCameraCoordinatorEmitsOnlyFirstOnPerDeviceAcrossDetectors(t *testing.T)
 		coordinator.Run(ctx)
 	})
 	defer func() {
+		cancel()
 		close(detectorA.events)
 		close(detectorB.events)
-		cancel()
 		wg.Wait()
 	}()
 
@@ -74,7 +74,7 @@ func TestCameraCoordinatorEmitsOnlyFirstOnPerDeviceAcrossDetectors(t *testing.T)
 	detectorB.events <- CameraEvent{Detector: "B", Type: CameraEventRecordingOn, VideoDevice: "video0"}
 
 	// no new events should be emitted since the coordinator should ignore the second ON for the same device
-	evs = receiveEvents(t, coordinator.Events(), 0, defaultTimeout)
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
 	if len(evs) != 0 {
 		t.Fatalf("expected no events, got %d (events: %v)", len(evs), evs)
 	}
@@ -91,15 +91,15 @@ func TestCameraCoordinatorIgnoresOffWithoutPriorOn(t *testing.T) {
 		coordinator.Run(ctx)
 	})
 	defer func() {
-		close(detector.events)
 		cancel()
+		close(detector.events)
 		wg.Wait()
 	}()
 
 	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "video9"}
 
 	// no events should be emitted since the OFF is stray without a prior ON
-	evs := receiveEvents(t, coordinator.Events(), 0, defaultTimeout)
+	evs := receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
 	if len(evs) != 0 {
 		t.Fatalf("video9: expected no events, got %d (events: %v)", len(evs), evs)
 	}
@@ -117,7 +117,6 @@ func TestCameraCoordinatorIgnoresOffWithoutPriorOn(t *testing.T) {
 	for i := range want {
 		assertEvent(t, got[i], want[i].Type, want[i].VideoDevice)
 	}
-
 }
 
 func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
@@ -132,8 +131,8 @@ func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
 		coordinator.Run(ctx)
 	})
 	defer func() {
-		close(detector.events)
 		cancel()
+		close(detector.events)
 		wg.Wait()
 	}()
 
@@ -151,7 +150,7 @@ func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
 	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "video2"}
 
 	// no events should be emitted since the first OFF is ignored while there's still an active ON
-	evs = receiveEvents(t, coordinator.Events(), 0, defaultTimeout)
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
 	if len(evs) != 0 {
 		t.Fatalf("video2: expected no events, got %d (events: %v)", len(evs), evs)
 	}
@@ -167,15 +166,86 @@ func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
 	assertEvent(t, ev, CameraEventRecordingOff, "video2")
 }
 
+func TestCameraCoordinatorIgnoresRepeatedOffsWithoutPriorOn(t *testing.T) {
+	// Multiple stray OFFs must all be ignored and must not cause the
+	// internal counter to go negative.
+	detector := newControllableDetector()
+	coordinator := NewCameraCoordinator(detector)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		coordinator.Run(ctx)
+	})
+	defer func() {
+		cancel()
+		close(detector.events)
+		wg.Wait()
+	}()
+
+	// send several OFFs in quick succession
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoX"}
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoX"}
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoX"}
+
+	evs := receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 0 {
+		t.Fatalf("expected no events for repeated stray OFFs, got %d", len(evs))
+	}
+}
+
+func TestCameraCoordinatorDoesNotUndercount(t *testing.T) {
+	// A single ON followed by multiple OFFs should emit exactly one ON and
+	// one OFF; subsequent OFFs must be ignored (no negative counts).
+	detector := newControllableDetector()
+	coordinator := NewCameraCoordinator(detector)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		coordinator.Run(ctx)
+	})
+	defer func() {
+		cancel()
+		close(detector.events)
+		wg.Wait()
+	}()
+
+	// emit ON
+	detector.events <- CameraEvent{Type: CameraEventRecordingOn, VideoDevice: "videoY"}
+	evs := receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	assertEvent(t, evs[0], CameraEventRecordingOn, "videoY")
+
+	// emit OFF (first) -> should forward OFF
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoY"}
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	assertEvent(t, evs[0], CameraEventRecordingOff, "videoY")
+
+	// additional OFFs should be ignored
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoY"}
+	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "videoY"}
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 0 {
+		t.Fatalf("expected no events after redundant OFFs, got %d", len(evs))
+	}
+}
+
 func receiveEvents(t *testing.T, ch <-chan CameraEvent, count int, timeout time.Duration) []CameraEvent {
 	t.Helper()
 	evs := make([]CameraEvent, 0, count)
+	if count == 0 {
+		panic("receiveEvents: count must be > 0")
+	}
+
 	for i := 0; i < count; i++ {
 		select {
-		case ev := <-ch:
+		case ev, ok := <-ch:
+			if !ok {
+				return evs
+			}
 			evs = append(evs, ev)
 		case <-time.After(timeout):
-			t.Fatalf("timeout waiting for event %d", i)
+			return evs
 		}
 	}
 	return evs

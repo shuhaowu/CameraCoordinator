@@ -5,11 +5,13 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 )
 
 type CameraCoordinator struct {
 	detectors []CameraDetector
 	events    chan CameraEvent
+	started   atomic.Bool
 }
 
 func NewCameraCoordinator(detectors ...CameraDetector) *CameraCoordinator {
@@ -35,7 +37,16 @@ func (c *CameraCoordinator) Events() <-chan CameraEvent {
 // A camera on event is generated on the first event from the detectors for that
 // device. A camera off event is generated on the last event from the detectors
 // for that device.
+//
+// The events in the buffer are not guaranteed to be processed on context
+// cancellation.
+//
+// Run can only be called once.
 func (c *CameraCoordinator) Run(ctx context.Context) error {
+	if c.started.Swap(true) {
+		return errors.New("camera coordinator can only be started once")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -91,10 +102,10 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return
-			case ev, ok := <-allEvents:
-				if !ok {
-					return
-				}
+			case ev := <-allEvents:
+				// TODO: events maybe dropped on shutdown. This is OK for now.
+				// In the future we can refactor so that the emit logic below is a
+				// instance function and we can drain after the everything shuts down.
 
 				logger.Debug("received event",
 					"detector", ev.Detector,
@@ -109,25 +120,29 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					if prev == 0 {
 						// first active detector for this device -> forward ON
 						logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice})
+						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice})
 					}
 
 				case CameraEventRecordingOff:
-					prev, ok := active[ev.VideoDevice]
-					if !ok || prev == 0 {
-						// stray/off without prior on -> ignore
-						continue
-					}
+				// Read current active count (missing key -> zero). Do not allow
+				// the counter to drop below zero — treat absent/zero as a stray
+				// OFF and ignore it.
+				prev := active[ev.VideoDevice]
+				if prev == 0 {
+					logger.Debug("stray/off without prior on; ignoring", "video_device", ev.VideoDevice)
+					break
+				}
 
-					if prev == 1 {
-						// last active detector -> forward OFF and remove state
-						delete(active, ev.VideoDevice)
-						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
-					} else {
-						active[ev.VideoDevice] = prev - 1
-					}
+				if prev == 1 {
+					// last active detector -> forward OFF and remove state
+					delete(active, ev.VideoDevice)
+					logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
+					c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
+					break
+				}
 
+				// more than one active detector — decrement the counter (stays >= 1)
+				active[ev.VideoDevice] = prev - 1
 				default:
 					logger.Warn("unknown event type", "type", ev.Type, "video_device", ev.VideoDevice, "detector", ev.Detector)
 				}

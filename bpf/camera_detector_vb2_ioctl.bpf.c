@@ -40,8 +40,9 @@ static __always_inline int emit_event(struct file *file, u32 camera_event_type)
         return 0;
     }
 
-    // If a rervation is made, it seems like we must submit it if not null?
-    // TODO: otherwise it seems like we just submit events infinitely.
+    // We should reserve only after we make sure we want to send an event,
+    // because reserving space will cause it to send (unless cancelled)? That's
+    // what it seems like it happens during testing.
     event = bpf_ringbuf_reserve(&camera_event_ringbuf, sizeof(*event), 0);
     if (!event) {
         // This can happen if the ring buffer is full. In that case, we just
