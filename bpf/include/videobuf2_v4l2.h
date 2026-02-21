@@ -21886,6 +21886,29 @@ enum mds_mitigations {
 	MDS_MITIGATION_VMWERV = 3,
 };
 
+enum media_entity_type {
+	MEDIA_ENTITY_TYPE_BASE = 0,
+	MEDIA_ENTITY_TYPE_VIDEO_DEVICE = 1,
+	MEDIA_ENTITY_TYPE_V4L2_SUBDEV = 2,
+};
+
+enum media_pad_signal_type {
+	PAD_SIGNAL_DEFAULT = 0,
+	PAD_SIGNAL_ANALOG = 1,
+	PAD_SIGNAL_DV = 2,
+	PAD_SIGNAL_AUDIO = 3,
+};
+
+enum media_request_state {
+	MEDIA_REQUEST_STATE_IDLE = 0,
+	MEDIA_REQUEST_STATE_VALIDATING = 1,
+	MEDIA_REQUEST_STATE_QUEUED = 2,
+	MEDIA_REQUEST_STATE_COMPLETE = 3,
+	MEDIA_REQUEST_STATE_CLEANING = 4,
+	MEDIA_REQUEST_STATE_UPDATING = 5,
+	NR_OF_MEDIA_REQUEST_STATE = 6,
+};
+
 enum mem_type {
 	MEM_EMPTY = 0,
 	MEM_RESERVED = 1,
@@ -29806,6 +29829,11 @@ enum uv_system_type {
 	UV_X2APIC = 2,
 };
 
+enum v4l2_async_match_type {
+	V4L2_ASYNC_MATCH_TYPE_I2C = 0,
+	V4L2_ASYNC_MATCH_TYPE_FWNODE = 1,
+};
+
 enum v4l2_av1_segment_feature {
 	V4L2_AV1_SEG_LVL_ALT_Q = 0,
 	V4L2_AV1_SEG_LVL_ALT_LF_Y_V = 1,
@@ -29813,6 +29841,37 @@ enum v4l2_av1_segment_feature {
 	V4L2_AV1_SEG_LVL_REF_SKIP = 6,
 	V4L2_AV1_SEG_LVL_REF_GLOBALMV = 7,
 	V4L2_AV1_SEG_LVL_MAX = 8,
+};
+
+enum v4l2_buf_type {
+	V4L2_BUF_TYPE_VIDEO_CAPTURE = 1,
+	V4L2_BUF_TYPE_VIDEO_OUTPUT = 2,
+	V4L2_BUF_TYPE_VIDEO_OVERLAY = 3,
+	V4L2_BUF_TYPE_VBI_CAPTURE = 4,
+	V4L2_BUF_TYPE_VBI_OUTPUT = 5,
+	V4L2_BUF_TYPE_SLICED_VBI_CAPTURE = 6,
+	V4L2_BUF_TYPE_SLICED_VBI_OUTPUT = 7,
+	V4L2_BUF_TYPE_VIDEO_OUTPUT_OVERLAY = 8,
+	V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE = 9,
+	V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE = 10,
+	V4L2_BUF_TYPE_SDR_CAPTURE = 11,
+	V4L2_BUF_TYPE_SDR_OUTPUT = 12,
+	V4L2_BUF_TYPE_META_CAPTURE = 13,
+	V4L2_BUF_TYPE_META_OUTPUT = 14,
+	V4L2_BUF_TYPE_PRIVATE = 128,
+};
+
+enum v4l2_field {
+	V4L2_FIELD_ANY = 0,
+	V4L2_FIELD_NONE = 1,
+	V4L2_FIELD_TOP = 2,
+	V4L2_FIELD_BOTTOM = 3,
+	V4L2_FIELD_INTERLACED = 4,
+	V4L2_FIELD_SEQ_TB = 5,
+	V4L2_FIELD_SEQ_BT = 6,
+	V4L2_FIELD_ALTERNATE = 7,
+	V4L2_FIELD_INTERLACED_TB = 8,
+	V4L2_FIELD_INTERLACED_BT = 9,
 };
 
 enum v4l2_fwnode_bus_type {
@@ -29827,10 +29886,98 @@ enum v4l2_fwnode_bus_type {
 	NR_OF_V4L2_FWNODE_BUS_TYPE = 8,
 };
 
+enum v4l2_mbus_csi2_cphy_line_orders_type {
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_ABC = 0,
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_ACB = 1,
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_BAC = 2,
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_BCA = 3,
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_CAB = 4,
+	V4L2_MBUS_CSI2_CPHY_LINE_ORDER_CBA = 5,
+};
+
+enum v4l2_mbus_frame_desc_flags {
+	V4L2_MBUS_FRAME_DESC_FL_LEN_MAX = 1,
+	V4L2_MBUS_FRAME_DESC_FL_BLOB = 2,
+};
+
+enum v4l2_mbus_frame_desc_type {
+	V4L2_MBUS_FRAME_DESC_TYPE_UNDEFINED = 0,
+	V4L2_MBUS_FRAME_DESC_TYPE_PARALLEL = 1,
+	V4L2_MBUS_FRAME_DESC_TYPE_CSI2 = 2,
+};
+
+enum v4l2_mbus_type {
+	V4L2_MBUS_UNKNOWN = 0,
+	V4L2_MBUS_PARALLEL = 1,
+	V4L2_MBUS_BT656 = 2,
+	V4L2_MBUS_CSI1 = 3,
+	V4L2_MBUS_CCP2 = 4,
+	V4L2_MBUS_CSI2_DPHY = 5,
+	V4L2_MBUS_CSI2_CPHY = 6,
+	V4L2_MBUS_DPI = 7,
+	V4L2_MBUS_INVALID = 8,
+};
+
+enum v4l2_memory {
+	V4L2_MEMORY_MMAP = 1,
+	V4L2_MEMORY_USERPTR = 2,
+	V4L2_MEMORY_OVERLAY = 3,
+	V4L2_MEMORY_DMABUF = 4,
+};
+
 enum v4l2_preemphasis {
 	V4L2_PREEMPHASIS_DISABLED = 0,
 	V4L2_PREEMPHASIS_50_uS = 1,
 	V4L2_PREEMPHASIS_75_uS = 2,
+};
+
+enum v4l2_priority {
+	V4L2_PRIORITY_UNSET = 0,
+	V4L2_PRIORITY_BACKGROUND = 1,
+	V4L2_PRIORITY_INTERACTIVE = 2,
+	V4L2_PRIORITY_RECORD = 3,
+	V4L2_PRIORITY_DEFAULT = 2,
+};
+
+enum v4l2_subdev_format_whence {
+	V4L2_SUBDEV_FORMAT_TRY = 0,
+	V4L2_SUBDEV_FORMAT_ACTIVE = 1,
+};
+
+enum v4l2_subdev_ir_mode {
+	V4L2_SUBDEV_IR_MODE_PULSE_WIDTH = 0,
+};
+
+enum v4l2_video_device_flags {
+	V4L2_FL_REGISTERED = 0,
+	V4L2_FL_USES_V4L2_FH = 1,
+	V4L2_FL_QUIRK_INVERTED_CROP = 2,
+	V4L2_FL_SUBDEV_RO_DEVNODE = 3,
+};
+
+enum vb2_buffer_state {
+	VB2_BUF_STATE_DEQUEUED = 0,
+	VB2_BUF_STATE_IN_REQUEST = 1,
+	VB2_BUF_STATE_PREPARING = 2,
+	VB2_BUF_STATE_QUEUED = 3,
+	VB2_BUF_STATE_ACTIVE = 4,
+	VB2_BUF_STATE_DONE = 5,
+	VB2_BUF_STATE_ERROR = 6,
+};
+
+enum vb2_io_modes {
+	VB2_MMAP = 1,
+	VB2_USERPTR = 2,
+	VB2_READ = 4,
+	VB2_WRITE = 8,
+	VB2_DMABUF = 16,
+};
+
+enum vb2_memory {
+	VB2_MEMORY_UNKNOWN = 0,
+	VB2_MEMORY_MMAP = 1,
+	VB2_MEMORY_USERPTR = 2,
+	VB2_MEMORY_DMABUF = 4,
 };
 
 enum vc_ctl_state {
@@ -30255,6 +30402,22 @@ enum vesa_blank_mode {
 	VESA_HSYNC_SUSPEND = 2,
 	VESA_POWERDOWN = 3,
 	VESA_BLANK_MAX = 3,
+};
+
+enum vfl_devnode_direction {
+	VFL_DIR_RX = 0,
+	VFL_DIR_TX = 1,
+	VFL_DIR_M2M = 2,
+};
+
+enum vfl_devnode_type {
+	VFL_TYPE_VIDEO = 0,
+	VFL_TYPE_VBI = 1,
+	VFL_TYPE_RADIO = 2,
+	VFL_TYPE_SUBDEV = 3,
+	VFL_TYPE_SDR = 4,
+	VFL_TYPE_TOUCH = 5,
+	VFL_TYPE_MAX = 6,
 };
 
 enum vga_switcheroo_client_id {
@@ -31571,6 +31734,8 @@ typedef u64 sector_t;
 typedef __u64 timeu64_t;
 
 typedef u64 upf_t;
+
+typedef __u64 v4l2_std_id;
 
 typedef uint64_t vli_type;
 
@@ -35088,6 +35253,11 @@ struct __kernel_timex {
 	long: 64;
 	long: 64;
 	long: 64;
+};
+
+struct __kernel_v4l2_timeval {
+	long long int tv_sec;
+	long long int tv_usec;
 };
 
 struct __kfifo {
@@ -102351,6 +102521,119 @@ struct mdu_version_s {
 
 typedef struct mdu_version_s mdu_version_t;
 
+struct media_entity_enum {
+	long unsigned int *bmap;
+	int idx_max;
+};
+
+struct media_entity;
+
+struct media_graph {
+	struct {
+		struct media_entity *entity;
+		struct list_head *link;
+	} stack[16];
+	struct media_entity_enum ent_enum;
+	int top;
+};
+
+struct media_devnode;
+
+struct media_pipeline;
+
+struct media_device_ops;
+
+struct media_device {
+	struct device *dev;
+	struct media_devnode *devnode;
+	char model[32];
+	char driver_name[32];
+	char serial[40];
+	char bus_info[32];
+	u32 hw_revision;
+	u64 topology_version;
+	u32 id;
+	struct ida entity_internal_idx;
+	int entity_internal_idx_max;
+	struct list_head entities;
+	struct list_head interfaces;
+	struct list_head pads;
+	struct list_head links;
+	struct list_head entity_notify;
+	struct mutex graph_mutex;
+	struct media_graph pm_count_walk;
+	void *source_priv;
+	int (*enable_source)(struct media_entity *, struct media_pipeline *);
+	void (*disable_source)(struct media_entity *);
+	const struct media_device_ops *ops;
+	struct mutex req_queue_mutex;
+	atomic_t request_id;
+};
+
+struct media_link;
+
+struct media_request;
+
+struct media_device_ops {
+	int (*link_notify)(struct media_link *, u32, unsigned int);
+	struct media_request * (*req_alloc)(struct media_device *);
+	void (*req_free)(struct media_request *);
+	int (*req_validate)(struct media_request *);
+	void (*req_queue)(struct media_request *);
+};
+
+struct media_file_operations;
+
+struct media_devnode {
+	struct media_device *media_dev;
+	const struct media_file_operations *fops;
+	struct device dev;
+	struct cdev cdev;
+	struct device *parent;
+	int minor;
+	long unsigned int flags;
+	void (*release)(struct media_devnode *);
+};
+
+struct media_gobj {
+	struct media_device *mdev;
+	u32 id;
+	struct list_head list;
+};
+
+struct media_pad;
+
+struct media_entity_operations;
+
+struct media_entity {
+	struct media_gobj graph_obj;
+	const char *name;
+	enum media_entity_type obj_type;
+	u32 function;
+	long unsigned int flags;
+	u16 num_pads;
+	u16 num_links;
+	u16 num_backlinks;
+	int internal_idx;
+	struct media_pad *pads;
+	struct list_head links;
+	const struct media_entity_operations *ops;
+	int use_count;
+	union {
+		struct {
+			u32 major;
+			u32 minor;
+		} dev;
+	} info;
+};
+
+struct media_entity_operations {
+	int (*get_fwnode_pad)(struct media_entity *, struct fwnode_endpoint *);
+	int (*link_setup)(struct media_entity *, const struct media_pad *, const struct media_pad *, u32);
+	int (*link_validate)(struct media_link *);
+	bool (*has_pad_interdep)(struct media_entity *, unsigned int, unsigned int);
+};
+
 struct media_event_desc {
 	__u8 media_event_code: 4;
 	__u8 reserved1: 4;
@@ -102359,6 +102642,97 @@ struct media_event_desc {
 	__u8 reserved2: 6;
 	__u8 start_slot;
 	__u8 end_slot;
+};
+
+struct media_file_operations {
+	struct module *owner;
+	ssize_t (*read)(struct file *, char *, size_t, loff_t *);
+	ssize_t (*write)(struct file *, const char *, size_t, loff_t *);
+	__poll_t (*poll)(struct file *, struct poll_table_struct *);
+	long int (*ioctl)(struct file *, unsigned int, long unsigned int);
+	long int (*compat_ioctl)(struct file *, unsigned int, long unsigned int);
+	int (*open)(struct file *);
+	int (*release)(struct file *);
+};
+
+struct media_interface {
+	struct media_gobj graph_obj;
+	struct list_head links;
+	u32 type;
+	u32 flags;
+};
+
+struct media_intf_devnode {
+	struct media_interface intf;
+	u32 major;
+	u32 minor;
+};
+
+struct media_link {
+	struct media_gobj graph_obj;
+	struct list_head list;
+	union {
+		struct media_gobj *gobj0;
+		struct media_pad *source;
+		struct media_interface *intf;
+	};
+	union {
+		struct media_gobj *gobj1;
+		struct media_pad *sink;
+		struct media_entity *entity;
+	};
+	struct media_link *reverse;
+	long unsigned int flags;
+	bool is_backlink;
+};
+
+struct media_pad {
+	struct media_gobj graph_obj;
+	struct media_entity *entity;
+	u16 index;
+	u16 num_links;
+	enum media_pad_signal_type sig_type;
+	long unsigned int flags;
+	struct media_pipeline *pipe;
+};
+
+struct media_pipeline {
+	bool allocated;
+	struct media_device *mdev;
+	struct list_head pads;
+	int start_count;
+};
+
+struct media_request {
+	struct media_device *mdev;
+	struct kref kref;
+	char debug_str[27];
+	enum media_request_state state;
+	unsigned int updating_count;
+	unsigned int access_count;
+	struct list_head objects;
+	unsigned int num_incomplete_objects;
+	wait_queue_head_t poll_wait;
+	spinlock_t lock;
+};
+
+struct media_request_object_ops;
+
+struct media_request_object {
+	const struct media_request_object_ops *ops;
+	void *priv;
+	struct media_request *req;
+	struct list_head list;
+	struct kref kref;
+	bool completed;
+};
+
+struct media_request_object_ops {
+	int (*prepare)(struct media_request_object *);
+	void (*unprepare)(struct media_request_object *);
+	void (*queue)(struct media_request_object *);
+	void (*unbind)(struct media_request_object *);
+	void (*release)(struct media_request_object *);
 };
 
 struct mem_cgroup_id {
@@ -151843,6 +152217,845 @@ union uvyh_gr0_gam_gr_config_u {
 	struct uv2h_gr0_gam_gr_config_s s2;
 };
 
+struct v4l2_async_match_desc {
+	enum v4l2_async_match_type type;
+	union {
+		struct fwnode_handle *fwnode;
+		struct {
+			int adapter_id;
+			short unsigned int address;
+		} i2c;
+	};
+};
+
+struct v4l2_async_notifier;
+
+struct v4l2_subdev;
+
+struct v4l2_async_connection {
+	struct v4l2_async_match_desc match;
+	struct v4l2_async_notifier *notifier;
+	struct list_head asc_entry;
+	struct list_head asc_subdev_entry;
+	struct v4l2_subdev *sd;
+};
+
+struct v4l2_async_notifier_operations;
+
+struct v4l2_device;
+
+struct v4l2_async_notifier {
+	const struct v4l2_async_notifier_operations *ops;
+	struct v4l2_device *v4l2_dev;
+	struct v4l2_subdev *sd;
+	struct v4l2_async_notifier *parent;
+	struct list_head waiting_list;
+	struct list_head done_list;
+	struct list_head notifier_entry;
+};
+
+struct v4l2_async_notifier_operations {
+	int (*bound)(struct v4l2_async_notifier *, struct v4l2_subdev *, struct v4l2_async_connection *);
+	int (*complete)(struct v4l2_async_notifier *);
+	void (*unbind)(struct v4l2_async_notifier *, struct v4l2_subdev *, struct v4l2_async_connection *);
+	void (*destroy)(struct v4l2_async_connection *);
+};
+
+struct v4l2_fract {
+	__u32 numerator;
+	__u32 denominator;
+};
+
+struct v4l2_bt_timings {
+	__u32 width;
+	__u32 height;
+	__u32 interlaced;
+	__u32 polarities;
+	__u64 pixelclock;
+	__u32 hfrontporch;
+	__u32 hsync;
+	__u32 hbackporch;
+	__u32 vfrontporch;
+	__u32 vsync;
+	__u32 vbackporch;
+	__u32 il_vfrontporch;
+	__u32 il_vsync;
+	__u32 il_vbackporch;
+	__u32 standards;
+	__u32 flags;
+	struct v4l2_fract picture_aspect;
+	__u8 cea861_vic;
+	__u8 hdmi_vic;
+	__u8 reserved[46];
+} __attribute__((packed));
+
+struct v4l2_bt_timings_cap {
+	__u32 min_width;
+	__u32 max_width;
+	__u32 min_height;
+	__u32 max_height;
+	__u64 min_pixelclock;
+	__u64 max_pixelclock;
+	__u32 standards;
+	__u32 capabilities;
+	__u32 reserved[16];
+};
+
+struct v4l2_timecode {
+	__u32 type;
+	__u32 flags;
+	__u8 frames;
+	__u8 seconds;
+	__u8 minutes;
+	__u8 hours;
+	__u8 userbits[4];
+};
+
+struct v4l2_plane;
+
+struct v4l2_buffer {
+	__u32 index;
+	__u32 type;
+	__u32 bytesused;
+	__u32 flags;
+	__u32 field;
+	struct __kernel_v4l2_timeval timestamp;
+	struct v4l2_timecode timecode;
+	__u32 sequence;
+	__u32 memory;
+	union {
+		__u32 offset;
+		long unsigned int userptr;
+		struct v4l2_plane *planes;
+		__s32 fd;
+	} m;
+	__u32 length;
+	__u32 reserved2;
+	union {
+		__s32 request_fd;
+		__u32 reserved;
+	};
+};
+
+struct v4l2_rect {
+	__s32 left;
+	__s32 top;
+	__u32 width;
+	__u32 height;
+};
+
+struct v4l2_clip {
+	struct v4l2_rect c;
+	struct v4l2_clip *next;
+};
+
+struct v4l2_pix_format {
+	__u32 width;
+	__u32 height;
+	__u32 pixelformat;
+	__u32 field;
+	__u32 bytesperline;
+	__u32 sizeimage;
+	__u32 colorspace;
+	__u32 priv;
+	__u32 flags;
+	union {
+		__u32 ycbcr_enc;
+		__u32 hsv_enc;
+	};
+	__u32 quantization;
+	__u32 xfer_func;
+};
+
+struct v4l2_plane_pix_format {
+	__u32 sizeimage;
+	__u32 bytesperline;
+	__u16 reserved[6];
+};
+
+struct v4l2_pix_format_mplane {
+	__u32 width;
+	__u32 height;
+	__u32 pixelformat;
+	__u32 field;
+	__u32 colorspace;
+	struct v4l2_plane_pix_format plane_fmt[8];
+	__u8 num_planes;
+	__u8 flags;
+	union {
+		__u8 ycbcr_enc;
+		__u8 hsv_enc;
+	};
+	__u8 quantization;
+	__u8 xfer_func;
+	__u8 reserved[7];
+};
+
+struct v4l2_window {
+	struct v4l2_rect w;
+	__u32 field;
+	__u32 chromakey;
+	struct v4l2_clip *clips;
+	__u32 clipcount;
+	void *bitmap;
+	__u8 global_alpha;
+};
+
+struct v4l2_vbi_format {
+	__u32 sampling_rate;
+	__u32 offset;
+	__u32 samples_per_line;
+	__u32 sample_format;
+	__s32 start[2];
+	__u32 count[2];
+	__u32 flags;
+	__u32 reserved[2];
+};
+
+struct v4l2_sliced_vbi_format {
+	__u16 service_set;
+	__u16 service_lines[48];
+	__u32 io_size;
+	__u32 reserved[2];
+};
+
+struct v4l2_sdr_format {
+	__u32 pixelformat;
+	__u32 buffersize;
+	__u8 reserved[24];
+};
+
+struct v4l2_meta_format {
+	__u32 dataformat;
+	__u32 buffersize;
+	__u32 width;
+	__u32 height;
+	__u32 bytesperline;
+};
+
+struct v4l2_format {
+	__u32 type;
+	union {
+		struct v4l2_pix_format pix;
+		struct v4l2_pix_format_mplane pix_mp;
+		struct v4l2_window win;
+		struct v4l2_vbi_format vbi;
+		struct v4l2_sliced_vbi_format sliced;
+		struct v4l2_sdr_format sdr;
+		struct v4l2_meta_format meta;
+		__u8 raw_data[200];
+	} fmt;
+};
+
+struct v4l2_create_buffers {
+	__u32 index;
+	__u32 count;
+	__u32 memory;
+	struct v4l2_format format;
+	__u32 capabilities;
+	__u32 flags;
+	__u32 max_num_buffers;
+	__u32 reserved[5];
+};
+
+struct v4l2_decode_vbi_line {
+	u32 is_second_field;
+	u8 *p;
+	u32 line;
+	u32 type;
+};
+
+struct v4l2_ctrl_handler;
+
+struct v4l2_prio_state {
+	atomic_t prios[4];
+};
+
+struct v4l2_device {
+	struct device *dev;
+	struct media_device *mdev;
+	struct list_head subdevs;
+	spinlock_t lock;
+	char name[36];
+	void (*notify)(struct v4l2_subdev *, unsigned int, void *);
+	struct v4l2_ctrl_handler *ctrl_handler;
+	struct v4l2_prio_state prio;
+	struct kref ref;
+	void (*release)(struct v4l2_device *);
+};
+
+struct v4l2_dv_timings {
+	__u32 type;
+	union {
+		struct v4l2_bt_timings bt;
+		__u32 reserved[32];
+	};
+};
+
+struct v4l2_dv_timings_cap {
+	__u32 type;
+	__u32 pad;
+	__u32 reserved[2];
+	union {
+		struct v4l2_bt_timings_cap bt;
+		__u32 raw_data[32];
+	};
+};
+
+struct v4l2_edid {
+	__u32 pad;
+	__u32 start_block;
+	__u32 blocks;
+	__u32 reserved[5];
+	__u8 *edid;
+};
+
+struct v4l2_enum_dv_timings {
+	__u32 index;
+	__u32 pad;
+	__u32 reserved[2];
+	struct v4l2_dv_timings timings;
+};
+
+struct v4l2_event_subscription {
+	__u32 type;
+	__u32 id;
+	__u32 flags;
+	__u32 reserved[5];
+};
+
+struct v4l2_exportbuffer {
+	__u32 type;
+	__u32 index;
+	__u32 plane;
+	__u32 flags;
+	__s32 fd;
+	__u32 reserved[11];
+};
+
+struct v4l2_m2m_ctx;
+
+struct video_device;
+
+struct v4l2_fh {
+	struct list_head list;
+	struct video_device *vdev;
+	struct v4l2_ctrl_handler *ctrl_handler;
+	enum v4l2_priority prio;
+	wait_queue_head_t wait;
+	struct mutex subscribe_lock;
+	struct list_head subscribed;
+	struct list_head available;
+	unsigned int navailable;
+	u32 sequence;
+	struct v4l2_m2m_ctx *m2m_ctx;
+};
+
+struct v4l2_file_operations {
+	struct module *owner;
+	ssize_t (*read)(struct file *, char *, size_t, loff_t *);
+	ssize_t (*write)(struct file *, const char *, size_t, loff_t *);
+	__poll_t (*poll)(struct file *, struct poll_table_struct *);
+	long int (*unlocked_ioctl)(struct file *, unsigned int, long unsigned int);
+	long int (*compat_ioctl32)(struct file *, unsigned int, long unsigned int);
+	long unsigned int (*get_unmapped_area)(struct file *, long unsigned int, long unsigned int, long unsigned int, long unsigned int);
+	int (*mmap)(struct file *, struct vm_area_struct *);
+	int (*open)(struct file *);
+	int (*release)(struct file *);
+};
+
+struct v4l2_frequency {
+	__u32 tuner;
+	__u32 type;
+	__u32 frequency;
+	__u32 reserved[8];
+};
+
+struct v4l2_frequency_band {
+	__u32 tuner;
+	__u32 type;
+	__u32 index;
+	__u32 capability;
+	__u32 rangelow;
+	__u32 rangehigh;
+	__u32 modulation;
+	__u32 reserved[9];
+};
+
+struct v4l2_mbus_config_parallel {
+	unsigned int flags;
+	unsigned char bus_width;
+	unsigned char data_shift;
+};
+
+struct v4l2_mbus_config_mipi_csi1 {
+	unsigned char clock_inv: 1;
+	unsigned char strobe: 1;
+	bool lane_polarity[2];
+	unsigned char data_lane;
+	unsigned char clock_lane;
+};
+
+struct v4l2_mbus_config_mipi_csi2 {
+	unsigned int flags;
+	unsigned char data_lanes[8];
+	unsigned char clock_lane;
+	unsigned char num_data_lanes;
+	bool lane_polarities[9];
+	enum v4l2_mbus_csi2_cphy_line_orders_type line_orders[8];
+};
+
+struct v4l2_mbus_config {
+	enum v4l2_mbus_type type;
+	u64 link_freq;
+	union {
+		struct v4l2_mbus_config_parallel parallel;
+		struct v4l2_mbus_config_mipi_csi1 mipi_csi1;
+		struct v4l2_mbus_config_mipi_csi2 mipi_csi2;
+	} bus;
+};
+
+struct v4l2_mbus_frame_desc_entry_csi2 {
+	u8 vc;
+	u8 dt;
+};
+
+struct v4l2_mbus_frame_desc_entry {
+	enum v4l2_mbus_frame_desc_flags flags;
+	u32 stream;
+	u32 pixelcode;
+	u32 length;
+	union {
+		struct v4l2_mbus_frame_desc_entry_csi2 csi2;
+	} bus;
+};
+
+struct v4l2_mbus_frame_desc {
+	enum v4l2_mbus_frame_desc_type type;
+	struct v4l2_mbus_frame_desc_entry entry[8];
+	short unsigned int num_entries;
+};
+
+struct v4l2_mbus_framefmt {
+	__u32 width;
+	__u32 height;
+	__u32 code;
+	__u32 field;
+	__u32 colorspace;
+	union {
+		__u16 ycbcr_enc;
+		__u16 hsv_enc;
+	};
+	__u16 quantization;
+	__u16 xfer_func;
+	__u16 flags;
+	__u16 reserved[10];
+};
+
+struct v4l2_modulator {
+	__u32 index;
+	__u8 name[32];
+	__u32 capability;
+	__u32 rangelow;
+	__u32 rangehigh;
+	__u32 txsubchans;
+	__u32 type;
+	__u32 reserved[3];
+};
+
+struct v4l2_plane {
+	__u32 bytesused;
+	__u32 length;
+	union {
+		__u32 mem_offset;
+		long unsigned int userptr;
+		__s32 fd;
+	} m;
+	__u32 data_offset;
+	__u32 reserved[11];
+};
+
+struct v4l2_priv_tun_config {
+	int tuner;
+	void *priv;
+};
+
+struct v4l2_remove_buffers {
+	__u32 index;
+	__u32 count;
+	__u32 type;
+	__u32 reserved[13];
+};
+
+struct v4l2_requestbuffers {
+	__u32 count;
+	__u32 type;
+	__u32 memory;
+	__u32 capabilities;
+	__u8 flags;
+	__u8 reserved[3];
+};
+
+struct v4l2_sliced_vbi_cap {
+	__u16 service_set;
+	__u16 service_lines[48];
+	__u32 type;
+	__u32 reserved[3];
+};
+
+struct v4l2_sliced_vbi_data {
+	__u32 id;
+	__u32 field;
+	__u32 line;
+	__u32 reserved;
+	__u8 data[48];
+};
+
+struct v4l2_subdev_ops;
+
+struct v4l2_subdev_internal_ops;
+
+struct v4l2_subdev_platform_data;
+
+struct v4l2_subdev_state;
+
+struct v4l2_subdev {
+	struct media_entity entity;
+	struct list_head list;
+	struct module *owner;
+	bool owner_v4l2_dev;
+	u32 flags;
+	struct v4l2_device *v4l2_dev;
+	const struct v4l2_subdev_ops *ops;
+	const struct v4l2_subdev_internal_ops *internal_ops;
+	struct v4l2_ctrl_handler *ctrl_handler;
+	char name[52];
+	u32 grp_id;
+	void *dev_priv;
+	void *host_priv;
+	struct video_device *devnode;
+	struct device *dev;
+	struct fwnode_handle *fwnode;
+	struct list_head async_list;
+	struct list_head async_subdev_endpoint_list;
+	struct v4l2_async_notifier *subdev_notifier;
+	struct list_head asc_list;
+	struct v4l2_subdev_platform_data *pdata;
+	struct mutex *state_lock;
+	struct led_classdev *privacy_led;
+	struct v4l2_subdev_state *active_state;
+	u64 enabled_pads;
+	bool s_stream_enabled;
+};
+
+struct v4l2_subdev_audio_ops {
+	int (*s_clock_freq)(struct v4l2_subdev *, u32);
+	int (*s_i2s_clock_freq)(struct v4l2_subdev *, u32);
+	int (*s_routing)(struct v4l2_subdev *, u32, u32, u32);
+	int (*s_stream)(struct v4l2_subdev *, int);
+};
+
+struct v4l2_subdev_io_pin_config;
+
+struct v4l2_subdev_core_ops {
+	int (*log_status)(struct v4l2_subdev *);
+	int (*s_io_pin_config)(struct v4l2_subdev *, size_t, struct v4l2_subdev_io_pin_config *);
+	int (*init)(struct v4l2_subdev *, u32);
+	int (*load_fw)(struct v4l2_subdev *);
+	int (*reset)(struct v4l2_subdev *, u32);
+	int (*s_gpio)(struct v4l2_subdev *, u32);
+	long int (*command)(struct v4l2_subdev *, unsigned int, void *);
+	long int (*ioctl)(struct v4l2_subdev *, unsigned int, void *);
+	long int (*compat_ioctl32)(struct v4l2_subdev *, unsigned int, long unsigned int);
+	int (*s_power)(struct v4l2_subdev *, int);
+	int (*interrupt_service_routine)(struct v4l2_subdev *, u32, bool *);
+	int (*subscribe_event)(struct v4l2_subdev *, struct v4l2_fh *, struct v4l2_event_subscription *);
+	int (*unsubscribe_event)(struct v4l2_subdev *, struct v4l2_fh *, struct v4l2_event_subscription *);
+};
+
+struct v4l2_subdev_fh {
+	struct v4l2_fh vfh;
+	struct module *owner;
+	struct v4l2_subdev_state *state;
+	u64 client_caps;
+};
+
+struct v4l2_subdev_format {
+	__u32 which;
+	__u32 pad;
+	struct v4l2_mbus_framefmt format;
+	__u32 stream;
+	__u32 reserved[7];
+};
+
+struct v4l2_subdev_frame_interval {
+	__u32 pad;
+	struct v4l2_fract interval;
+	__u32 stream;
+	__u32 which;
+	__u32 reserved[7];
+};
+
+struct v4l2_subdev_frame_interval_enum {
+	__u32 index;
+	__u32 pad;
+	__u32 code;
+	__u32 width;
+	__u32 height;
+	struct v4l2_fract interval;
+	__u32 which;
+	__u32 stream;
+	__u32 reserved[7];
+};
+
+struct v4l2_subdev_frame_size_enum {
+	__u32 index;
+	__u32 pad;
+	__u32 code;
+	__u32 min_width;
+	__u32 max_width;
+	__u32 min_height;
+	__u32 max_height;
+	__u32 which;
+	__u32 stream;
+	__u32 reserved[7];
+};
+
+struct v4l2_subdev_internal_ops {
+	int (*init_state)(struct v4l2_subdev *, struct v4l2_subdev_state *);
+	int (*registered)(struct v4l2_subdev *);
+	void (*unregistered)(struct v4l2_subdev *);
+	int (*open)(struct v4l2_subdev *, struct v4l2_subdev_fh *);
+	int (*close)(struct v4l2_subdev *, struct v4l2_subdev_fh *);
+	void (*release)(struct v4l2_subdev *);
+};
+
+struct v4l2_subdev_io_pin_config {
+	u32 flags;
+	u8 pin;
+	u8 function;
+	u8 value;
+	u8 strength;
+};
+
+struct v4l2_subdev_ir_parameters;
+
+struct v4l2_subdev_ir_ops {
+	int (*rx_read)(struct v4l2_subdev *, u8 *, size_t, ssize_t *);
+	int (*rx_g_parameters)(struct v4l2_subdev *, struct v4l2_subdev_ir_parameters *);
+	int (*rx_s_parameters)(struct v4l2_subdev *, struct v4l2_subdev_ir_parameters *);
+	int (*tx_write)(struct v4l2_subdev *, u8 *, size_t, ssize_t *);
+	int (*tx_g_parameters)(struct v4l2_subdev *, struct v4l2_subdev_ir_parameters *);
+	int (*tx_s_parameters)(struct v4l2_subdev *, struct v4l2_subdev_ir_parameters *);
+};
+
+struct v4l2_subdev_ir_parameters {
+	unsigned int bytes_per_data_element;
+	enum v4l2_subdev_ir_mode mode;
+	bool enable;
+	bool interrupt_enable;
+	bool shutdown;
+	bool modulation;
+	u32 max_pulse_width;
+	unsigned int carrier_freq;
+	unsigned int duty_cycle;
+	bool invert_level;
+	bool invert_carrier_sense;
+	u32 noise_filter_min_width;
+	unsigned int carrier_range_lower;
+	unsigned int carrier_range_upper;
+	u32 resolution;
+};
+
+struct v4l2_subdev_route;
+
+struct v4l2_subdev_krouting {
+	unsigned int len_routes;
+	unsigned int num_routes;
+	struct v4l2_subdev_route *routes;
+};
+
+struct v4l2_subdev_mbus_code_enum {
+	__u32 pad;
+	__u32 index;
+	__u32 code;
+	__u32 which;
+	__u32 flags;
+	__u32 stream;
+	__u32 reserved[6];
+};
+
+struct v4l2_subdev_tuner_ops;
+
+struct v4l2_subdev_video_ops;
+
+struct v4l2_subdev_vbi_ops;
+
+struct v4l2_subdev_sensor_ops;
+
+struct v4l2_subdev_pad_ops;
+
+struct v4l2_subdev_ops {
+	const struct v4l2_subdev_core_ops *core;
+	const struct v4l2_subdev_tuner_ops *tuner;
+	const struct v4l2_subdev_audio_ops *audio;
+	const struct v4l2_subdev_video_ops *video;
+	const struct v4l2_subdev_vbi_ops *vbi;
+	const struct v4l2_subdev_ir_ops *ir;
+	const struct v4l2_subdev_sensor_ops *sensor;
+	const struct v4l2_subdev_pad_ops *pad;
+};
+
+struct v4l2_subdev_pad_config {
+	struct v4l2_mbus_framefmt format;
+	struct v4l2_rect crop;
+	struct v4l2_rect compose;
+	struct v4l2_fract interval;
+};
+
+struct v4l2_subdev_selection;
+
+struct v4l2_subdev_pad_ops {
+	int (*enum_mbus_code)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_mbus_code_enum *);
+	int (*enum_frame_size)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_frame_size_enum *);
+	int (*enum_frame_interval)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_frame_interval_enum *);
+	int (*get_fmt)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_format *);
+	int (*set_fmt)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_format *);
+	int (*get_selection)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_selection *);
+	int (*set_selection)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_selection *);
+	int (*get_frame_interval)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_frame_interval *);
+	int (*set_frame_interval)(struct v4l2_subdev *, struct v4l2_subdev_state *, struct v4l2_subdev_frame_interval *);
+	int (*get_edid)(struct v4l2_subdev *, struct v4l2_edid *);
+	int (*set_edid)(struct v4l2_subdev *, struct v4l2_edid *);
+	int (*s_dv_timings)(struct v4l2_subdev *, unsigned int, struct v4l2_dv_timings *);
+	int (*g_dv_timings)(struct v4l2_subdev *, unsigned int, struct v4l2_dv_timings *);
+	int (*query_dv_timings)(struct v4l2_subdev *, unsigned int, struct v4l2_dv_timings *);
+	int (*dv_timings_cap)(struct v4l2_subdev *, struct v4l2_dv_timings_cap *);
+	int (*enum_dv_timings)(struct v4l2_subdev *, struct v4l2_enum_dv_timings *);
+	int (*link_validate)(struct v4l2_subdev *, struct media_link *, struct v4l2_subdev_format *, struct v4l2_subdev_format *);
+	int (*get_frame_desc)(struct v4l2_subdev *, unsigned int, struct v4l2_mbus_frame_desc *);
+	int (*set_frame_desc)(struct v4l2_subdev *, unsigned int, struct v4l2_mbus_frame_desc *);
+	int (*get_mbus_config)(struct v4l2_subdev *, unsigned int, struct v4l2_mbus_config *);
+	int (*set_routing)(struct v4l2_subdev *, struct v4l2_subdev_state *, enum v4l2_subdev_format_whence, struct v4l2_subdev_krouting *);
+	int (*enable_streams)(struct v4l2_subdev *, struct v4l2_subdev_state *, u32, u64);
+	int (*disable_streams)(struct v4l2_subdev *, struct v4l2_subdev_state *, u32, u64);
+};
+
+struct v4l2_subdev_platform_data {
+	struct regulator_bulk_data *regulators;
+	int num_regulators;
+	void *host_priv;
+};
+
+struct v4l2_subdev_route {
+	__u32 sink_pad;
+	__u32 sink_stream;
+	__u32 source_pad;
+	__u32 source_stream;
+	__u32 flags;
+	__u32 reserved[5];
+};
+
+struct v4l2_subdev_selection {
+	__u32 which;
+	__u32 pad;
+	__u32 target;
+	__u32 flags;
+	struct v4l2_rect r;
+	__u32 stream;
+	__u32 reserved[7];
+};
+
+struct v4l2_subdev_sensor_ops {
+	int (*g_skip_top_lines)(struct v4l2_subdev *, u32 *);
+	int (*g_skip_frames)(struct v4l2_subdev *, u32 *);
+};
+
+struct v4l2_subdev_stream_config;
+
+struct v4l2_subdev_stream_configs {
+	u32 num_configs;
+	struct v4l2_subdev_stream_config *configs;
+};
+
+struct v4l2_subdev_state {
+	struct mutex _lock;
+	struct mutex *lock;
+	struct v4l2_subdev *sd;
+	struct v4l2_subdev_pad_config *pads;
+	struct v4l2_subdev_krouting routing;
+	struct v4l2_subdev_stream_configs stream_configs;
+};
+
+struct v4l2_subdev_stream_config {
+	u32 pad;
+	u32 stream;
+	bool enabled;
+	struct v4l2_mbus_framefmt fmt;
+	struct v4l2_rect crop;
+	struct v4l2_rect compose;
+	struct v4l2_fract interval;
+};
+
+struct tuner_setup;
+
+struct v4l2_tuner;
+
+struct v4l2_subdev_tuner_ops {
+	int (*standby)(struct v4l2_subdev *);
+	int (*s_radio)(struct v4l2_subdev *);
+	int (*s_frequency)(struct v4l2_subdev *, const struct v4l2_frequency *);
+	int (*g_frequency)(struct v4l2_subdev *, struct v4l2_frequency *);
+	int (*enum_freq_bands)(struct v4l2_subdev *, struct v4l2_frequency_band *);
+	int (*g_tuner)(struct v4l2_subdev *, struct v4l2_tuner *);
+	int (*s_tuner)(struct v4l2_subdev *, const struct v4l2_tuner *);
+	int (*g_modulator)(struct v4l2_subdev *, struct v4l2_modulator *);
+	int (*s_modulator)(struct v4l2_subdev *, const struct v4l2_modulator *);
+	int (*s_type_addr)(struct v4l2_subdev *, struct tuner_setup *);
+	int (*s_config)(struct v4l2_subdev *, const struct v4l2_priv_tun_config *);
+};
+
+struct v4l2_subdev_vbi_ops {
+	int (*decode_vbi_line)(struct v4l2_subdev *, struct v4l2_decode_vbi_line *);
+	int (*s_vbi_data)(struct v4l2_subdev *, const struct v4l2_sliced_vbi_data *);
+	int (*g_vbi_data)(struct v4l2_subdev *, struct v4l2_sliced_vbi_data *);
+	int (*g_sliced_vbi_cap)(struct v4l2_subdev *, struct v4l2_sliced_vbi_cap *);
+	int (*s_raw_fmt)(struct v4l2_subdev *, struct v4l2_vbi_format *);
+	int (*g_sliced_fmt)(struct v4l2_subdev *, struct v4l2_sliced_vbi_format *);
+	int (*s_sliced_fmt)(struct v4l2_subdev *, struct v4l2_sliced_vbi_format *);
+};
+
+struct v4l2_subdev_video_ops {
+	int (*s_routing)(struct v4l2_subdev *, u32, u32, u32);
+	int (*s_crystal_freq)(struct v4l2_subdev *, u32, u32);
+	int (*g_std)(struct v4l2_subdev *, v4l2_std_id *);
+	int (*s_std)(struct v4l2_subdev *, v4l2_std_id);
+	int (*s_std_output)(struct v4l2_subdev *, v4l2_std_id);
+	int (*g_std_output)(struct v4l2_subdev *, v4l2_std_id *);
+	int (*querystd)(struct v4l2_subdev *, v4l2_std_id *);
+	int (*g_tvnorms)(struct v4l2_subdev *, v4l2_std_id *);
+	int (*g_tvnorms_output)(struct v4l2_subdev *, v4l2_std_id *);
+	int (*g_input_status)(struct v4l2_subdev *, u32 *);
+	int (*s_stream)(struct v4l2_subdev *, int);
+	int (*s_rx_buffer)(struct v4l2_subdev *, void *, unsigned int *);
+	int (*pre_streamon)(struct v4l2_subdev *, u32);
+	int (*post_streamoff)(struct v4l2_subdev *);
+};
+
+struct v4l2_tuner {
+	__u32 index;
+	__u8 name[32];
+	__u32 type;
+	__u32 capability;
+	__u32 rangelow;
+	__u32 rangehigh;
+	__u32 rxsubchans;
+	__u32 audmode;
+	__s32 signal;
+	__s32 afc;
+	__u32 reserved[4];
+};
+
 struct va_alignment {
 	int flags;
 	long unsigned int mask;
@@ -151887,6 +153100,162 @@ struct variable_validate {
 	efi_guid_t vendor;
 	char *name;
 	bool (*validate)(efi_char16_t *, int, u8 *, long unsigned int);
+};
+
+struct vb2_buffer;
+
+struct vb2_plane;
+
+struct vb2_buf_ops {
+	int (*verify_planes_array)(struct vb2_buffer *, const void *);
+	void (*init_buffer)(struct vb2_buffer *);
+	void (*fill_user_buffer)(struct vb2_buffer *, void *);
+	int (*fill_vb2_buffer)(struct vb2_buffer *, struct vb2_plane *);
+	void (*copy_timestamp)(struct vb2_buffer *, const void *);
+};
+
+struct vb2_plane {
+	void *mem_priv;
+	struct dma_buf *dbuf;
+	unsigned int dbuf_mapped;
+	bool dbuf_duplicated;
+	unsigned int bytesused;
+	unsigned int length;
+	unsigned int min_length;
+	union {
+		unsigned int offset;
+		long unsigned int userptr;
+		int fd;
+	} m;
+	unsigned int data_offset;
+};
+
+struct vb2_queue;
+
+struct vb2_buffer {
+	struct vb2_queue *vb2_queue;
+	unsigned int index;
+	unsigned int type;
+	unsigned int memory;
+	unsigned int num_planes;
+	u64 timestamp;
+	struct media_request *request;
+	struct media_request_object req_obj;
+	enum vb2_buffer_state state;
+	unsigned int synced: 1;
+	unsigned int prepared: 1;
+	unsigned int copied_timestamp: 1;
+	unsigned int skip_cache_sync_on_prepare: 1;
+	unsigned int skip_cache_sync_on_finish: 1;
+	struct vb2_plane planes[8];
+	struct list_head queued_entry;
+	struct list_head done_entry;
+};
+
+struct vb2_mem_ops {
+	void * (*alloc)(struct vb2_buffer *, struct device *, long unsigned int);
+	void (*put)(void *);
+	struct dma_buf * (*get_dmabuf)(struct vb2_buffer *, void *, long unsigned int);
+	void * (*get_userptr)(struct vb2_buffer *, struct device *, long unsigned int, long unsigned int);
+	void (*put_userptr)(void *);
+	void (*prepare)(void *);
+	void (*finish)(void *);
+	void * (*attach_dmabuf)(struct vb2_buffer *, struct device *, struct dma_buf *, long unsigned int);
+	void (*detach_dmabuf)(void *);
+	int (*map_dmabuf)(void *);
+	void (*unmap_dmabuf)(void *);
+	void * (*vaddr)(struct vb2_buffer *, void *);
+	void * (*cookie)(struct vb2_buffer *, void *);
+	unsigned int (*num_users)(void *);
+	int (*mmap)(void *, struct vm_area_struct *);
+};
+
+struct vb2_ops {
+	int (*queue_setup)(struct vb2_queue *, unsigned int *, unsigned int *, unsigned int *, struct device **);
+	void (*wait_prepare)(struct vb2_queue *);
+	void (*wait_finish)(struct vb2_queue *);
+	int (*buf_out_validate)(struct vb2_buffer *);
+	int (*buf_init)(struct vb2_buffer *);
+	int (*buf_prepare)(struct vb2_buffer *);
+	void (*buf_finish)(struct vb2_buffer *);
+	void (*buf_cleanup)(struct vb2_buffer *);
+	int (*prepare_streaming)(struct vb2_queue *);
+	int (*start_streaming)(struct vb2_queue *, unsigned int);
+	void (*stop_streaming)(struct vb2_queue *);
+	void (*unprepare_streaming)(struct vb2_queue *);
+	void (*buf_queue)(struct vb2_buffer *);
+	void (*buf_request_complete)(struct vb2_buffer *);
+};
+
+struct vb2_fileio_data;
+
+struct vb2_threadio_data;
+
+struct vb2_queue {
+	unsigned int type;
+	unsigned int io_modes;
+	struct device *dev;
+	long unsigned int dma_attrs;
+	unsigned int bidirectional: 1;
+	unsigned int fileio_read_once: 1;
+	unsigned int fileio_write_immediately: 1;
+	unsigned int allow_zero_bytesused: 1;
+	unsigned int quirk_poll_must_check_waiting_for_buffers: 1;
+	unsigned int supports_requests: 1;
+	unsigned int requires_requests: 1;
+	unsigned int uses_qbuf: 1;
+	unsigned int uses_requests: 1;
+	unsigned int allow_cache_hints: 1;
+	unsigned int non_coherent_mem: 1;
+	struct mutex *lock;
+	void *owner;
+	const struct vb2_ops *ops;
+	const struct vb2_mem_ops *mem_ops;
+	const struct vb2_buf_ops *buf_ops;
+	void *drv_priv;
+	u32 subsystem_flags;
+	unsigned int buf_struct_size;
+	u32 timestamp_flags;
+	gfp_t gfp_flags;
+	u32 min_queued_buffers;
+	u32 min_reqbufs_allocation;
+	struct device *alloc_devs[8];
+	struct mutex mmap_lock;
+	unsigned int memory;
+	enum dma_data_direction dma_dir;
+	struct vb2_buffer **bufs;
+	long unsigned int *bufs_bitmap;
+	unsigned int max_num_buffers;
+	struct list_head queued_list;
+	unsigned int queued_count;
+	atomic_t owned_by_drv_count;
+	struct list_head done_list;
+	spinlock_t done_lock;
+	wait_queue_head_t done_wq;
+	unsigned int streaming: 1;
+	unsigned int start_streaming_called: 1;
+	unsigned int error: 1;
+	unsigned int waiting_for_buffers: 1;
+	unsigned int waiting_in_dqbuf: 1;
+	unsigned int is_multiplanar: 1;
+	unsigned int is_output: 1;
+	unsigned int is_busy: 1;
+	unsigned int copy_timestamp: 1;
+	unsigned int last_buffer_dequeued: 1;
+	struct vb2_fileio_data *fileio;
+	struct vb2_threadio_data *threadio;
+	char name[32];
+};
+
+struct vb2_v4l2_buffer {
+	struct vb2_buffer vb2_buf;
+	__u32 flags;
+	__u32 field;
+	struct v4l2_timecode timecode;
+	__u32 sequence;
+	__s32 request_fd;
+	bool is_held;
+	struct vb2_plane planes[8];
 };
 
 struct vblk_comp {
@@ -152676,6 +154045,38 @@ struct vhost_task {
 	long unsigned int flags;
 	struct task_struct *task;
 	struct mutex exit_mutex;
+};
+
+struct v4l2_ioctl_ops;
+
+struct video_device {
+	struct media_entity entity;
+	struct media_intf_devnode *intf_devnode;
+	struct media_pipeline pipe;
+	const struct v4l2_file_operations *fops;
+	u32 device_caps;
+	struct device dev;
+	struct cdev *cdev;
+	struct v4l2_device *v4l2_dev;
+	struct device *dev_parent;
+	struct v4l2_ctrl_handler *ctrl_handler;
+	struct vb2_queue *queue;
+	struct v4l2_prio_state *prio;
+	char name[64];
+	enum vfl_devnode_type vfl_type;
+	enum vfl_devnode_direction vfl_dir;
+	int minor;
+	u16 num;
+	long unsigned int flags;
+	int index;
+	spinlock_t fh_lock;
+	struct list_head fh_list;
+	int dev_debug;
+	v4l2_std_id tvnorms;
+	void (*release)(struct video_device *);
+	const struct v4l2_ioctl_ops *ioctl_ops;
+	long unsigned int valid_ioctls[3];
+	struct mutex *lock;
 };
 
 struct videomode {

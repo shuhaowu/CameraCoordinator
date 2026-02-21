@@ -66,7 +66,5 @@ func main() {
 		_ = adapter.Run(ctx, coord.Events())
 	}()
 
-	defer wg.Wait()
-
-	<-ctx.Done()
+	wg.Wait()
 }

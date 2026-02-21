@@ -15,7 +15,7 @@ import (
 )
 
 // TODO: the target is set to AMD64 only. Figure out a way to parameterize this.
-//go:generate go tool bpf2go -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
+//go:generate go tool bpf2go -verbose -tags linux -target amd64 camera_detector_vb2_ioctl bpf/camera_detector_vb2_ioctl.bpf.c -- -I./bpf/include
 
 const ebpfVb2IoctlDetectorName = "EBPFVb2IoctlStreamDetector"
 
@@ -42,6 +42,12 @@ func (d *EBPFVb2IoctlStreamDetector) Events() <-chan CameraEvent {
 func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	objs := camera_detector_vb2_ioctlObjects{}
 	if err := loadCamera_detector_vb2_ioctlObjects(&objs, nil); err != nil {
+		// To debug verifier errors, uncomment this.
+		// e := errors.Unwrap(errors.Unwrap(err)).(*ebpf.VerifierError)
+		// for _, l := range e.Log {
+		// 	fmt.Println(l)
+		// }
+
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
 	defer objs.Close()
@@ -60,8 +66,8 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 
 	// vb2_fop_release is hooked to detect the case where a process is
 	// terminated without calling vb2_ioctl_streamoff. The BPF program only
-	// emits a STREAM_OFF event when the device was previously marked as
-	// streaming by the streamon kprobe.
+	// emits a STREAM_OFF event when the kernel's vb2_queue reports the device
+	// is currently streaming (checked via file->private_data->vdev->queue->streaming).
 	fopReleaseLink, err := link.Kprobe("vb2_fop_release", objs.KprobeVb2FopRelease, nil)
 	if err != nil {
 		return fmt.Errorf("attach kprobe vb2_fop_release: %w", err)
@@ -114,7 +120,29 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 				continue
 			}
 
-			d.logger.Debug("camera event detected", "video_device", devName, "event_type", ev.EventType, "source", ev.Source)
+			// Source 2 means the event is from vb2_fop_release, which can be
+			// triggered by process termination.
+			//
+			// TODO: there might be a race condition. Not sure if vb2_fop_release is
+			// triggered before or after the process is reaped. If it's after, the PID
+			// might have been reused by another process, and we might be checking the
+			// liveness of the wrong process. We should verify the comm
+			if ev.Source == 2 {
+				// events from vb2_fop_release are generated when a fd is closed,
+				// often as part of process termination. Otherwise, the process might be
+				// doing something else with that fd (like sending some IOCTL to it).
+				if err := unix.Kill(int(ev.Pid), 0); err != nil {
+					if err != unix.ESRCH {
+						d.logger.Warn("failed to check pid liveness", "pid", ev.Pid, "err", err)
+						continue
+					}
+				} else {
+					d.logger.Debug("fop_release event PID still alive", "pid", ev.Pid, "video_device", devName)
+					continue
+				}
+			}
+
+			d.logger.Debug("camera event detected", "video_device", devName, "event_type", ev.EventType, "source", ev.Source, "pid", ev.Pid)
 
 			select {
 			case <-ctx.Done():

@@ -6,4 +6,6 @@
 
 set -xe
 
-bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+# bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+# btf dump videobuf2_v4l2 includes the header content from vmlinux.
+bpftool btf dump file /sys/kernel/btf/videobuf2_v4l2 format c > videobuf2_v4l2.h

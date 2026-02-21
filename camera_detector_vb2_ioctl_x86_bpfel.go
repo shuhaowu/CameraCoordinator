@@ -17,10 +17,11 @@ type camera_detector_vb2_ioctlCameraEvent struct {
 	_         structs.HostLayout
 	EventType uint32
 	Source    uint32
+	Pid       uint32
 	Name      [32]uint8
 }
 
-type camera_detector_vb2_ioctlDeviceKey struct {
+type camera_detector_vb2_ioctlDeviceNameKey struct {
 	_    structs.HostLayout
 	Name [32]uint8
 }
@@ -77,7 +78,7 @@ type camera_detector_vb2_ioctlProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type camera_detector_vb2_ioctlMapSpecs struct {
 	CameraEventRingbuf *ebpf.MapSpec `ebpf:"camera_event_ringbuf"`
-	StreamingState     *ebpf.MapSpec `ebpf:"streaming_state"`
+	StreamingPid       *ebpf.MapSpec `ebpf:"streaming_pid"`
 }
 
 // camera_detector_vb2_ioctlVariableSpecs contains global variables before they are loaded into the kernel.
@@ -107,13 +108,13 @@ func (o *camera_detector_vb2_ioctlObjects) Close() error {
 // It can be passed to loadCamera_detector_vb2_ioctlObjects or ebpf.CollectionSpec.LoadAndAssign.
 type camera_detector_vb2_ioctlMaps struct {
 	CameraEventRingbuf *ebpf.Map `ebpf:"camera_event_ringbuf"`
-	StreamingState     *ebpf.Map `ebpf:"streaming_state"`
+	StreamingPid       *ebpf.Map `ebpf:"streaming_pid"`
 }
 
 func (m *camera_detector_vb2_ioctlMaps) Close() error {
 	return _Camera_detector_vb2_ioctlClose(
 		m.CameraEventRingbuf,
-		m.StreamingState,
+		m.StreamingPid,
 	)
 }
 

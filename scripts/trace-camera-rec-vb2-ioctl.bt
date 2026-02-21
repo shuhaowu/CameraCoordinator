@@ -1,5 +1,14 @@
 #!/usr/bin/bpftrace -v
 
+// Needed for struct v4l2_fh
+#include <media/v4l2-fh.h>
+
+// Needed for struct video_device
+#include <media/v4l2-dev.h>
+
+// Needed for struct vb2_queue
+#include <media/videobuf2-core.h>
+
 kprobe:vb2_ioctl_streamon
 {
   $file = (struct file *) arg0;
@@ -16,9 +25,6 @@ kprobe:vb2_ioctl_streamon
 
   $name = $dentry->d_name.name;
   printf("vb2_ioctl_streamon: file=%s\n", str($name)); // This will give video0, video1, etc.
-
-  // mark this device as streaming-on
-  @on[str($name)] = 1;
 }
 
 kprobe:vb2_ioctl_streamoff
@@ -36,21 +42,13 @@ kprobe:vb2_ioctl_streamoff
   }
 
   $name = $dentry->d_name.name;
-  // always log for visibility
   printf("vb2_ioctl_streamoff: file=%s\n", str($name));
-
-  // clear streaming flag for this device
-  @on[str($name)] = 0;
 }
 
 // In some cases the app does not call vb2_ioctl_streamoff before the process
 // is terminated. As a part of that termination, this code path is called.
-// However this function is called for other reasons. So we track if the stream
-// was on via a global variable that is set during streamon.
-//
-// Note there is potentially also a way to get if the device is streaming via
-// file->private_data but I'm unable to make that work for now so the stateful
-// approach is OK.
+// However this function is called for other reasons, so we check if the device
+// was streaming before logging the event.
 kprobe:vb2_fop_release
 {
   $file = (struct file *) arg0;
@@ -67,11 +65,13 @@ kprobe:vb2_fop_release
 
   $name = $dentry->d_name.name;
 
-  // only act if we previously saw a streamon for this device
-  if (@on[str($name)] == 1) {
-    printf("vb2_fop_release: file=%s\n", str($name));
+  $fh = (struct v4l2_fh *)$file->private_data;
+  $streaming = $fh->vdev->queue->streaming;
 
-    // clear flag, since we're handling the cleanup case
-    @on[str($name)] = 0;
+  // Only log release if the device was streaming. This is because there are
+  // many reasons for release to be called that are not related to the camera
+  // streaming being turned off.
+  if ($streaming) {
+    printf("vb2_fop_release: file=%s\n", str($name));
   }
 }

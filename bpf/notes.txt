@@ -1,0 +1,66 @@
+With using BPF_CORE_READ_BITFIELD, I get
+
+0: R1=ctx() R10=fp0
+; struct file *file = (struct file *)PT_REGS_PARM1(ctx); @ camera_detector_vb2_ioctl.bpf.c:105
+0: (79) r7 = *(u64 *)(r1 +112) ; R1=ctx() R7_w=scalar()
+; if (!file) { @ camera_detector_vb2_ioctl.bpf.c:106
+1: (15) if r7 == 0x0 goto pc+85 ; R7_w=scalar(umin=1)
+2: (b7) r1 = 72 ; R1_w=72
+3: (bf) r3 = r7 ; R3_w=scalar(id=1,umin=1) R7_w=scalar(id=1,umin=1)
+4: (0f) r3 += r1 ; R1_w=72 R3_w=scalar(id=1+72)
+5: (bf) r1 = r10 ; R1_w=fp0 R10=fp0
+6: (07) r1 += -16 ; R1_w=fp-16
+; const unsigned char *name_ptr = BPF_CORE_READ(file, f_path.dentry, d_name.name); @ camera_detector_vb2_ioctl.bpf.c:110
+7: (b7) r2 = 8 ; R2_w=8
+8: (85) call bpf_probe_read_kernel#113 ; R0=scalar() fp-16=mmmmmmmm
+9: (b7) r1 = 40 ; R1_w=40
+10: (79) r3 = *(u64 *)(r10 -16) ; R3_w=scalar() R10=fp0 fp-16=mmmmmmmm
+11: (0f) r3 += r1 ; R1_w=40 R3_w=scalar()
+12: (bf) r1 = r10 ; R1_w=fp0 R10=fp0
+13: (07) r1 += -8 ; R1_w=fp-8
+14: (b7) r2 = 8 ; R2_w=8
+15: (85) call bpf_probe_read_kernel#113 ; R0_w=scalar() fp-8=mmmmmmmm
+16: (79) r6 = *(u64 *)(r10 -8) ; R6_w=scalar() R10=fp0 fp-8=mmmmmmmm
+; if (!name_ptr) { @ camera_detector_vb2_ioctl.bpf.c:111
+17: (15) if r6 == 0x0 goto pc+69 ; R6_w=scalar(umin=1)
+18: (b7) r1 = 24 ; R1_w=24
+19: (0f) r7 += r1 ; R1_w=24 R7_w=scalar(id=1+24)
+20: (bf) r1 = r10 ; R1_w=fp0 R10=fp0
+21: (07) r1 += -8 ; R1_w=fp-8
+; struct v4l2_fh *fh = (struct v4l2_fh *)BPF_CORE_READ(file, private_data); @ camera_detector_vb2_ioctl.bpf.c:117
+22: (b7) r2 = 8 ; R2_w=8
+23: (bf) r3 = r7 ; R3_w=scalar(id=2) R7_w=scalar(id=2)
+24: (85) call bpf_probe_read_kernel#113 ; R0=scalar() fp-8=mmmmmmmm
+25: (79) r3 = *(u64 *)(r10 -8) ; R3_w=scalar() R10=fp0 fp-8=mmmmmmmm
+; if (!fh) { @ camera_detector_vb2_ioctl.bpf.c:118
+26: (15) if r3 == 0x0 goto pc+60 ; R3_w=scalar(umin=1)
+27: (b7) r1 = 16 ; R1_w=16
+28: (0f) r3 += r1 ; R1_w=16 R3_w=scalar()
+29: (bf) r1 = r10 ; R1_w=fp0 R10=fp0
+30: (07) r1 += -16 ; R1_w=fp-16
+; struct vb2_queue *queue = BPF_CORE_READ(fh, vdev, queue); @ camera_detector_vb2_ioctl.bpf.c:122
+31: (b7) r2 = 8 ; R2_w=8
+32: (85) call bpf_probe_read_kernel#113 ; R0=scalar() fp-16=mmmmmmmm
+33: (b7) r1 = 1000 ; R1_w=1000
+34: (79) r3 = *(u64 *)(r10 -16) ; R3_w=scalar() R10=fp0 fp-16=mmmmmmmm
+35: (0f) r3 += r1 ; R1_w=1000 R3_w=scalar()
+36: (bf) r1 = r10 ; R1_w=fp0 R10=fp0
+37: (07) r1 += -8 ; R1_w=fp-8
+38: (b7) r2 = 8 ; R2_w=8
+39: (85) call bpf_probe_read_kernel#113 ; R0_w=scalar() fp-8=mmmmmmmm
+40: (79) r2 = *(u64 *)(r10 -8) ; R2_w=scalar() R10=fp0 fp-8=mmmmmmmm
+; if (!queue) { @ camera_detector_vb2_ioctl.bpf.c:123
+41: (15) if r2 == 0x0 goto pc+45 ; R2_w=scalar(umin=1)
+42: (b7) r1 = 304 ; R1_w=304
+; u32 streaming = BPF_CORE_READ_BITFIELD(queue, streaming); @ camera_detector_vb2_ioctl.bpf.c:128
+43: (0f) r2 += r1 ; R1_w=304 R2_w=scalar()
+44: (b7) r1 = 0 ; R1_w=0
+45: (b7) r3 = 4 ; R3=4
+46: (65) if r3 s> 0x3 goto pc+5 ; R3=4
+52: (15) if r3 == 0x4 goto pc+6 ; R3=4
+59: (61) r1 = *(u32 *)(r2 +0)
+R2 invalid mem access 'scalar'
+
+The AI figured out it must be using _PROBED. Understand why.
+
+See: https://nakryiko.com/posts/bpf-core-reference-guide/#btf-enabled-bpf-program-types-with-direct-memory-reads
