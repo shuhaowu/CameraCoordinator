@@ -8,7 +8,6 @@ import (
 	"sort"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/shuhaowu/cameracoordinator"
 )
@@ -48,6 +47,7 @@ func main() {
 
 	detector := cameracoordinator.NewEBPFVb2IoctlStreamDetector()
 	coord := cameracoordinator.NewCameraCoordinator(detector)
+	adapter := cameracoordinator.NewPrintAdapter()
 
 	var wg sync.WaitGroup
 
@@ -59,23 +59,14 @@ func main() {
 		_ = coord.Run(ctx)
 	}()
 
+	// Run the adapter in background to process and print events.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = adapter.Run(ctx, coord.Events())
+	}()
+
 	defer wg.Wait()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case event, open := <-coord.Events():
-			if !open {
-				slog.Info("event channel closed, exiting")
-				return
-			}
-
-			slog.Info("camera event",
-				"time", time.Now().Format(time.RFC3339Nano),
-				"event", event.Type.String(),
-				"device", event.VideoDevice,
-			)
-		}
-	}
+	<-ctx.Done()
 }
