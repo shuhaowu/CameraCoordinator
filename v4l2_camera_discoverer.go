@@ -15,6 +15,9 @@ import (
 
 type V4L2CapabilityCapabilities uint32
 
+// https://github.com/torvalds/linux/blob/d79526b89571ae447c1a5cfd3d627efa07098348/include/uapi/linux/videodev2.h#L2730
+// Number is derived from _IOR('V', 0, struct v4l2_capability) in the kernel headers.
+// This is AI generated and it seems to work. Linux should also be ABI stable.
 const VIDIOC_QUERYCAP = 0x80685600
 
 const (
