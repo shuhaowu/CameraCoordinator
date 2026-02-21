@@ -16,7 +16,13 @@ import (
 type camera_detector_vb2_ioctlCameraEvent struct {
 	_         structs.HostLayout
 	EventType uint32
+	Source    uint32
 	Name      [32]uint8
+}
+
+type camera_detector_vb2_ioctlDeviceKey struct {
+	_    structs.HostLayout
+	Name [32]uint8
 }
 
 // loadCamera_detector_vb2_ioctl returns the embedded CollectionSpec for camera_detector_vb2_ioctl.
@@ -61,6 +67,7 @@ type camera_detector_vb2_ioctlSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type camera_detector_vb2_ioctlProgramSpecs struct {
+	KprobeVb2FopRelease     *ebpf.ProgramSpec `ebpf:"kprobe_vb2_fop_release"`
 	KprobeVb2IoctlStreamoff *ebpf.ProgramSpec `ebpf:"kprobe_vb2_ioctl_streamoff"`
 	KprobeVb2IoctlStreamon  *ebpf.ProgramSpec `ebpf:"kprobe_vb2_ioctl_streamon"`
 }
@@ -70,6 +77,7 @@ type camera_detector_vb2_ioctlProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type camera_detector_vb2_ioctlMapSpecs struct {
 	CameraEventRingbuf *ebpf.MapSpec `ebpf:"camera_event_ringbuf"`
+	StreamingState     *ebpf.MapSpec `ebpf:"streaming_state"`
 }
 
 // camera_detector_vb2_ioctlVariableSpecs contains global variables before they are loaded into the kernel.
@@ -99,11 +107,13 @@ func (o *camera_detector_vb2_ioctlObjects) Close() error {
 // It can be passed to loadCamera_detector_vb2_ioctlObjects or ebpf.CollectionSpec.LoadAndAssign.
 type camera_detector_vb2_ioctlMaps struct {
 	CameraEventRingbuf *ebpf.Map `ebpf:"camera_event_ringbuf"`
+	StreamingState     *ebpf.Map `ebpf:"streaming_state"`
 }
 
 func (m *camera_detector_vb2_ioctlMaps) Close() error {
 	return _Camera_detector_vb2_ioctlClose(
 		m.CameraEventRingbuf,
+		m.StreamingState,
 	)
 }
 
@@ -117,12 +127,14 @@ type camera_detector_vb2_ioctlVariables struct {
 //
 // It can be passed to loadCamera_detector_vb2_ioctlObjects or ebpf.CollectionSpec.LoadAndAssign.
 type camera_detector_vb2_ioctlPrograms struct {
+	KprobeVb2FopRelease     *ebpf.Program `ebpf:"kprobe_vb2_fop_release"`
 	KprobeVb2IoctlStreamoff *ebpf.Program `ebpf:"kprobe_vb2_ioctl_streamoff"`
 	KprobeVb2IoctlStreamon  *ebpf.Program `ebpf:"kprobe_vb2_ioctl_streamon"`
 }
 
 func (p *camera_detector_vb2_ioctlPrograms) Close() error {
 	return _Camera_detector_vb2_ioctlClose(
+		p.KprobeVb2FopRelease,
 		p.KprobeVb2IoctlStreamoff,
 		p.KprobeVb2IoctlStreamon,
 	)

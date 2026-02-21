@@ -16,6 +16,9 @@ kprobe:vb2_ioctl_streamon
 
   $name = $dentry->d_name.name;
   printf("vb2_ioctl_streamon: file=%s\n", str($name)); // This will give video0, video1, etc.
+
+  // mark this device as streaming-on
+  @on[str($name)] = 1;
 }
 
 kprobe:vb2_ioctl_streamoff
@@ -33,5 +36,42 @@ kprobe:vb2_ioctl_streamoff
   }
 
   $name = $dentry->d_name.name;
+  // always log for visibility
   printf("vb2_ioctl_streamoff: file=%s\n", str($name));
+
+  // clear streaming flag for this device
+  @on[str($name)] = 0;
+}
+
+// In some cases the app does not call vb2_ioctl_streamoff before the process
+// is terminated. As a part of that termination, this code path is called.
+// However this function is called for other reasons. So we track if the stream
+// was on via a global variable that is set during streamon.
+//
+// Note there is potentially also a way to get if the device is streaming via
+// file->private_data but I'm unable to make that work for now so the stateful
+// approach is OK.
+kprobe:vb2_fop_release
+{
+  $file = (struct file *) arg0;
+  if ($file == 0) {
+    printf("vb2_fop_release detected but file == 0\n");
+    return;
+  }
+
+  $dentry = $file->f_path.dentry;
+  if ($dentry == 0) {
+    printf("vb2_fop_release: dentry == 0\n");
+    return;
+  }
+
+  $name = $dentry->d_name.name;
+
+  // only act if we previously saw a streamon for this device
+  if (@on[str($name)] == 1) {
+    printf("vb2_fop_release: file=%s\n", str($name));
+
+    // clear flag, since we're handling the cleanup case
+    @on[str($name)] = 0;
+  }
 }

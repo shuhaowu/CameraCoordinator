@@ -58,6 +58,16 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	}
 	defer streamOffLink.Close()
 
+	// vb2_fop_release is hooked to detect the case where a process is
+	// terminated without calling vb2_ioctl_streamoff. The BPF program only
+	// emits a STREAM_OFF event when the device was previously marked as
+	// streaming by the streamon kprobe.
+	fopReleaseLink, err := link.Kprobe("vb2_fop_release", objs.KprobeVb2FopRelease, nil)
+	if err != nil {
+		return fmt.Errorf("attach kprobe vb2_fop_release: %w", err)
+	}
+	defer fopReleaseLink.Close()
+
 	reader, err := ringbuf.NewReader(objs.CameraEventRingbuf)
 	if err != nil {
 		return fmt.Errorf("create ringbuf reader: %w", err)
@@ -103,6 +113,8 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 				// Not a camera device according to V4L2 capabilities; skip.
 				continue
 			}
+
+			d.logger.Debug("camera event detected", "video_device", devName, "event_type", ev.EventType, "source", ev.Source)
 
 			select {
 			case <-ctx.Done():
