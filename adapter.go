@@ -3,7 +3,6 @@ package cameracoordinator
 import (
 	"context"
 	"log/slog"
-	"time"
 )
 
 // Adapter processes camera events from a CameraCoordinator. Implementations
@@ -34,7 +33,6 @@ func (p *PrintAdapter) Run(ctx context.Context, events <-chan CameraEvent) error
 			}
 
 			slog.Info("camera event",
-				"time", time.Now().Format(time.RFC3339Nano),
 				"event", event.Type.String(),
 				"device", event.VideoDevice,
 			)
