@@ -20,6 +20,11 @@ type AdapterConfig struct {
 	Print struct {
 		Enabled bool `json:"enabled,omitempty"`
 	} `json:"print"`
+	Script struct {
+		Enabled   bool   `json:"enabled,omitempty"`
+		OnScript  string `json:"on_script,omitempty"`
+		OffScript string `json:"off_script,omitempty"`
+	} `json:"script"`
 }
 
 // AppConfig represents the JSON configuration for the camera-coordinator
@@ -45,17 +50,28 @@ func LoadConfig(r io.Reader) (AppConfig, error) {
 // buildDetectors creates a slice of CameraDetector based on the configuration.
 func buildDetectors(cfg DetectorConfig) []cameracoordinator.CameraDetector {
 	var result []cameracoordinator.CameraDetector
+
 	if cfg.EBPFVb2Ioctl.Enabled {
 		result = append(result, cameracoordinator.NewEBPFVb2IoctlStreamDetector())
 	}
+
 	return result
 }
 
 // buildAdapters is analogous to buildDetectors.
 func buildAdapters(cfg AdapterConfig) []cameracoordinator.Adapter {
 	var result []cameracoordinator.Adapter
+
 	if cfg.Print.Enabled {
 		result = append(result, cameracoordinator.NewPrintAdapter())
 	}
+
+	if cfg.Script.Enabled {
+		result = append(result, cameracoordinator.NewScriptAdapter(cameracoordinator.ScriptAdapterConfig{
+			OnScript:  cfg.Script.OnScript,
+			OffScript: cfg.Script.OffScript,
+		}))
+	}
+
 	return result
 }
