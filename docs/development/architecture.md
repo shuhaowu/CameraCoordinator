@@ -1,35 +1,31 @@
 # Architecture
 
-CameraCoordinator is a Golang service that detects if webcams plugged into a Linux machine is turned on or off. Interally, it consists of the following components:
+CameraCoordinator is a Go library that detects when webcams on a Linux machine start or stop recording. It is consumed by a binary in `cmd/camera-coordinator`.
 
-- A `CameraDetector` (camera_detector.go) interface that detects when the webcam is turned on/off. The events are emitted via an event channel.
-  - Multiple implementations of this interface (camera_detector_*.go) can exist for different method.
-  - A `CameraCoordinator` (camera_coordinator.go) struct implements the interface and merges multiple `CameraDetectors` into a single one. If multiple detection triggers (in a sequence of on, on, on or off, off, off), it will only trigger on the first on and last off event for that video device.
-  - The main detection method is implemented via BPF using the `github.com/cilium/ebpf` library.
-- The library also implement methods (in `v4l2_utils.go`) to query the camera human readable name and other metadata given a video device filename using the VIDIOC_QUERYCAP ioctl.
-- Multiple Adapters that adapts the events from the CameraCoordinator to various sinks:
-  - A `DBusAdapter` that takes the events from the channel and convert it to dbus messages.
-  - A `DebugAdapter` that
-- A `EventBroadcaster` that can mirror the event from a single events channel (from the `CameraCoordinator`) to multiple events channels (to multiple adapters).
+## Components
 
-Camera Events
--------------
+- **`CameraDetector`** (`camera_detector.go`) — interface for a detection source. Implementations call `Run(ctx)` to start and expose raw `CameraEvent` values on a channel returned by `Events()`.
+  - **`EBPFVb2IoctlStreamDetector`** (`camera_detector_vb2_ioctl.go`) — the main implementation. Attaches kprobes to `vb2_ioctl_streamon`, `vb2_ioctl_streamoff`, and `vb2_fop_release` via the `github.com/cilium/ebpf` library. Events are delivered from kernel space through a BPF ring buffer.
+- **`CameraCoordinator`** (`camera_coordinator.go`) — aggregates one or more `CameraDetector` instances into a single event stream. Tracks active detectors per device and deduplicates: emits one `RecordingOn` when the first detector goes active for a device, and one `RecordingOff` when the last detector goes inactive.
+- **`EventBroadcaster`** (`event_broadcaster.go`) — fans out a single coordinator `Events()` channel to N output channels, one per adapter.
+- **`Adapter`** (`adapter.go`) — interface for event sinks. Implementations receive a `<-chan CameraEvent` and process events until the channel is closed or `ctx` is cancelled.
+  - **`PrintAdapter`** — logs each event via `slog`.
+  - **`ScriptAdapter`** (`adapter_script.go`) — executes a configurable shell script on `RecordingOn` and/or `RecordingOff` events.
+- **V4L2 utilities** (`v4l2_camera_discoverer.go`) — queries device capabilities via the `VIDIOC_QUERYCAP` ioctl, used to filter eBPF events to V4L2 capture devices only and to discover devices.
 
-The `CameraEvent` is defined as follows:
+Events flow through the system in a linear chain. Each box represents a logical component, not a specific variable or goroutine.
 
-```go
+```mermaid
+flowchart LR
+    D1["Detector A"]
+    D2["Detector B"]
+    Coordinator["<b>Coordinator</b><br/>stateful merge & dedup"]
+    Broadcaster["<b>Event Broadcaster</b><br/>fan‑out to adapters"]
+    A1["Adapter 1"]
+    A2["Adapter 2"]
+    A3["Adapter 3"]
 
-const (
-  CameraEventRecordingOn CameraEventType = iota
-  CameraEventRecordingOff
-)
-
-struct CameraEvent {
-  // The event type
-  Type CameraEventType
-
-  // The filename of the video device detected from
-  VideoDevice string
-}
-
+    D1 & D2 --> Coordinator --> Broadcaster --> A1
+    Broadcaster --> A2
+    Broadcaster --> A3
 ```
