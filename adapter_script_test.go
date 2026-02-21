@@ -17,22 +17,19 @@ type call struct {
 	args   []string
 }
 
-// withFakeCommand replaces commandContext with a fake that sends every call
-// on a channel. The channel is buffered so the adapter goroutine won't block.
-// If fail is true the fake commands execute the `false` binary so they return
-// an error; otherwise they run `true`. The cleanup function restores the
-// original value.
-func withFakeCommand(fail bool) (<-chan call, func()) {
-	old := commandContext
+// fakeCommand returns a fake commandContext implementation along with a
+// channel that receives every invocation. The returned function can be
+// assigned directly to a ScriptAdapter's commandContext field
+func fakeCommand(fail bool) (func(ctx context.Context, name string, args ...string) *exec.Cmd, <-chan call) {
 	ch := make(chan call, 100)
-	commandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+	fn := func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		ch <- call{name, args}
 		if fail {
 			return exec.CommandContext(ctx, "false")
 		}
 		return exec.CommandContext(ctx, "true")
 	}
-	return ch, func() { commandContext = old }
+	return fn, ch
 }
 
 // sendEvent submits an event to the channel with a timeout to avoid hangs in
@@ -60,13 +57,13 @@ func recvCall(t *testing.T, ch <-chan call) *call {
 }
 
 func TestScriptAdapter_OnEvent(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on"})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -84,13 +81,13 @@ func TestScriptAdapter_OnEvent(t *testing.T) {
 }
 
 func TestScriptAdapter_OffEvent(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{OffScript: "off"})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -108,13 +105,13 @@ func TestScriptAdapter_OffEvent(t *testing.T) {
 }
 
 func TestScriptAdapter_NoScriptConfigured(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -129,13 +126,13 @@ func TestScriptAdapter_NoScriptConfigured(t *testing.T) {
 }
 
 func TestScriptAdapter_ClosedChannel(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -151,13 +148,13 @@ func TestScriptAdapter_ClosedChannel(t *testing.T) {
 }
 
 func TestScriptAdapter_ContextCancellation(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -170,8 +167,7 @@ func TestScriptAdapter_ContextCancellation(t *testing.T) {
 }
 
 func TestScriptAdapter_FailingScript(t *testing.T) {
-	callsCh, restore := withFakeCommand(true)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(true)
 
 	// capture logs to ensure error format
 	var buf bytes.Buffer
@@ -184,6 +180,7 @@ func TestScriptAdapter_FailingScript(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on"})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})
@@ -212,13 +209,13 @@ func TestScriptAdapter_FailingScript(t *testing.T) {
 }
 
 func TestScriptAdapter_BothScripts(t *testing.T) {
-	callsCh, restore := withFakeCommand(false)
-	defer restore()
+	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 2)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on", OffScript: "off"})
+	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
 	})

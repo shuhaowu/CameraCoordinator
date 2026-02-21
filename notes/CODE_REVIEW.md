@@ -18,7 +18,6 @@ This is a clean, layered architecture and the Go concurrency model is used appro
 The code is in solid shape for a library this size. The main areas of concern, roughly in priority order, are:
 
 1. **`ScriptAdapter`'s background goroutines are untracked** — scripts launched with `go s.handle(...)` have no `sync.WaitGroup`, so when `Run` returns (e.g. on context cancellation), in-flight script processes may be abandoned with no way for the caller to wait for them or clean up. This is the most actionable bug.
-2. **`commandContext` is a package-level mutable variable used for test injection** — this is a data race if tests ever run in parallel, and is a structural anti-pattern. Standard Go practice is dependency injection via the struct itself.
 3. **`EventBroadcaster` can deliver an event to some adapters but not others on context cancellation** — the fan-out loop iterates outputs sequentially; if the context is cancelled mid-iteration, only the outputs that came before the cancellation win receive the event. This creates a divergence in state between adapters.
 4. **PID-liveness logic in the eBPF detector is correct but written in a confusing doubly-inverted style** that makes it easy to misread as the opposite of what it does.
 5. **`VIDIOC_QUERYCAP` is a hardcoded hex constant** with a comment saying it was "AI generated and it seems to work". The existing struct-size test partially validates it, but the constant will silently be wrong on non-x86 architectures with no compiler or linker error.
@@ -32,32 +31,6 @@ The code is in solid shape for a library this size. The main areas of concern, r
 
 ### `adapter_script.go`
 
-#### #1 — `commandContext` global variable (line ~53)
-
-```go
-var commandContext = exec.CommandContext
-```
-
-This is a package-level mutable variable used exclusively to allow test code to inject a fake. The problem is that Go tests within the same package run in the same process. If any test calls `t.Parallel()` now or in the future (which is idiomatic), concurrent mutations of `commandContext` from different `withFakeCommand` calls will be a data race.
-
-Beyond the race, this pattern leaks a test-only concern into production code and requires the package _user_ to coordinate around the global whenever the symbol is exported.
-
-**Fix:** Add a `commandContext` field directly to `ScriptAdapter`:
-
-```go
-type ScriptAdapter struct {
-    cfg            ScriptAdapterConfig
-    commandContext func(ctx context.Context, name string, args ...string) *exec.Cmd
-}
-
-func NewScriptAdapter(cfg ScriptAdapterConfig) *ScriptAdapter {
-    return &ScriptAdapter{cfg: cfg, commandContext: exec.CommandContext}
-}
-```
-
-Tests then set the field directly on the struct instance rather than swapping a global.
-
----
 
 #### #2 — Untracked background goroutines in `Run` (line ~45)
 
@@ -285,25 +258,6 @@ if err != nil {
     continue
 }
 ```
-
----
-
-### `adapter_script_test.go`
-
-#### #12 — `withFakeCommand` is not safe for parallel tests (line ~25)
-
-```go
-func withFakeCommand(fail bool) (<-chan call, func()) {
-    old := commandContext
-    ch := make(chan call, 100)
-    commandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
-        ...
-    }
-    return ch, func() { commandContext = old }
-}
-```
-
-This function mutates the package-level `commandContext` variable. If any two tests that call `withFakeCommand` run concurrently (e.g. after adding `t.Parallel()`), the writes and reads to `commandContext` will be a data race. Go's race detector will flag this. This is a direct consequence of #1 above and is resolved by the same fix.
 
 ---
 

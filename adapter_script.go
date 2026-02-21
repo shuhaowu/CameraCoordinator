@@ -22,11 +22,17 @@ type ScriptAdapterConfig struct {
 // on/off events.
 type ScriptAdapter struct {
 	cfg ScriptAdapterConfig
+
+	// commandContext is used to create *exec.Cmd instances. For testing purposes
+	commandContext func(ctx context.Context, name string, args ...string) *exec.Cmd
 }
 
 // NewScriptAdapter creates a ScriptAdapter with the given configuration.
 func NewScriptAdapter(cfg ScriptAdapterConfig) *ScriptAdapter {
-	return &ScriptAdapter{cfg: cfg}
+	return &ScriptAdapter{
+		cfg:            cfg,
+		commandContext: exec.CommandContext,
+	}
 }
 
 // Run listens for CameraEvents and executes the configured scripts until ctx
@@ -46,11 +52,6 @@ func (s *ScriptAdapter) Run(ctx context.Context, events <-chan CameraEvent) erro
 		}
 	}
 }
-
-// commandContext is a variable wrapper around exec.CommandContext so tests
-// can replace it with a fake implementation that records calls. Production
-// code uses the real exec.CommandContext.
-var commandContext = exec.CommandContext
 
 // handle runs the appropriate script for the given event.
 func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
@@ -78,7 +79,7 @@ func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
 		"device", event.VideoDevice,
 	)
 
-	cmd := commandContext(ctx, script, event.Type.String(), event.VideoDevice)
+	cmd := s.commandContext(ctx, script, event.Type.String(), event.VideoDevice)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
