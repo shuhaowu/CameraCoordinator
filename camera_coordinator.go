@@ -159,7 +159,7 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 						// last active detector turned off -> forward OFF and remove state
 						delete(active, ev.VideoDevice)
 						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
+						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
 					}
 
 				default:

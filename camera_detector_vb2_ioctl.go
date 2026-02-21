@@ -110,7 +110,7 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			// because video on/off should not happen that often.
 			cap, err := V4L2DeviceCapability(devName)
 			if err != nil {
-				d.logger.Warn("failed to query V4L2 capabilities", "err", err, "video_device", devName)
+				d.logger.Warn("failed to query V4L2 capabilities, assuming not a camera", "err", err, "video_device", devName)
 				continue
 			}
 
@@ -128,16 +128,17 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			// might have been reused by another process, and we might be checking the
 			// liveness of the wrong process. We should verify the comm
 			if ev.Source == 2 {
+				err := unix.Kill(int(ev.Pid), 0)
 				// events from vb2_fop_release are generated when a fd is closed,
 				// often as part of process termination. Otherwise, the process might be
 				// doing something else with that fd (like sending some IOCTL to it).
-				if err := unix.Kill(int(ev.Pid), 0); err != nil {
-					if err != unix.ESRCH {
-						d.logger.Warn("failed to check pid liveness", "pid", ev.Pid, "err", err)
-						continue
-					}
-				} else {
+				if err == nil {
 					d.logger.Debug("fop_release event PID still alive", "pid", ev.Pid, "video_device", devName)
+					continue
+				} else if err == unix.ESRCH {
+					// This is fine
+				} else {
+					d.logger.Warn("failed to check pid liveness", "pid", ev.Pid, "err", err)
 					continue
 				}
 			}
