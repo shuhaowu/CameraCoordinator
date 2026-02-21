@@ -34,7 +34,7 @@ func TestBuildDetectorsAndNotifiers(t *testing.T) {
 		t.Fatalf("expected 0 detectors with empty config, got %d", len(dets))
 	}
 
-	ads := buildNotifiers(cfg.Notifiers)
+	ads := buildNotifiers(cfg.Notifiers, "")
 	if len(ads) != 0 {
 		t.Fatalf("expected 0 notifiers with empty config, got %d", len(ads))
 	}
@@ -44,7 +44,7 @@ func TestBuildDetectorsAndNotifiers(t *testing.T) {
 	if len(dets) != 0 {
 		t.Fatalf("expected 0 detectors with nil config, got %d", len(dets))
 	}
-	ads = buildNotifiers(AppConfig{}.Notifiers)
+	ads = buildNotifiers(AppConfig{}.Notifiers, "")
 	if len(ads) != 0 {
 		t.Fatalf("expected 0 notifiers with nil config, got %d", len(ads))
 	}
@@ -63,7 +63,7 @@ func TestBuildDetectorsAndNotifiers_ExplicitEnable(t *testing.T) {
 		t.Fatalf("detector had wrong type: %T", dets[0])
 	}
 
-	ads := buildNotifiers(cfg.Notifiers)
+	ads := buildNotifiers(cfg.Notifiers, "")
 	if len(ads) != 1 {
 		t.Fatalf("expected 1 notifier when explicitly enabled, got %d", len(ads))
 	}
@@ -81,7 +81,7 @@ func TestDisabledEntries(t *testing.T) {
 	if len(dets) != 0 {
 		t.Fatalf("expected 0 detectors when disabled, got %d", len(dets))
 	}
-	ads := buildNotifiers(cfg.Notifiers)
+	ads := buildNotifiers(cfg.Notifiers, "")
 	if len(ads) != 0 {
 		t.Fatalf("expected 0 notifiers when disabled, got %d", len(ads))
 	}

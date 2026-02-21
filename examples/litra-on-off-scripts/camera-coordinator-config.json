@@ -1,0 +1,17 @@
+{
+  "detectors": {
+    "ebpf_vb2_ioctl": {
+      "enabled": true
+    }
+  },
+  "notifiers": {
+    "print": {
+      "enabled": false
+    },
+    "script": {
+      "enabled": true,
+      "on_script": "./on.sh",
+      "off_script": "./off.sh"
+    }
+  }
+}

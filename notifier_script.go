@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 // ScriptNotifierConfig holds the paths to scripts to run on camera events.
@@ -16,6 +18,10 @@ type ScriptNotifierConfig struct {
 	// OffScript is the path to the script to run when recording stops.
 	// If empty, no script is run.
 	OffScript string
+	// BaseDir is the directory where the JSON config file was located. If
+	// a script path starts with "./" it will be resolved relative to this
+	// directory.
+	BaseDir string
 }
 
 // ScriptNotifier is a Notifier that executes shell scripts on camera recording
@@ -71,6 +77,12 @@ func (s *ScriptNotifier) handle(ctx context.Context, event CameraEvent) {
 
 	if script == "" {
 		return
+	}
+
+	// If script path starts with "./" resolve it relative to the config
+	// file directory so users can write "./on.sh" in their config.
+	if strings.HasPrefix(script, "./") && s.cfg.BaseDir != "" {
+		script = filepath.Join(s.cfg.BaseDir, script)
 	}
 
 	slog.Info("script notifier: running script",

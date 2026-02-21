@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -48,6 +49,7 @@ func main() {
 	// prepare configuration; if no path is specified we fall back to the
 	// built-in default that enables ebpf and print notifiers.
 	cfg := defaultConfig
+	configDir := ""
 	if *configPath != "" {
 		f, err := os.Open(*configPath)
 		if err != nil {
@@ -62,6 +64,8 @@ func main() {
 			os.Exit(1)
 		}
 		cfg = loaded
+		// record directory of provided config so notifiers can resolve ./ paths
+		configDir = filepath.Dir(*configPath)
 		// log raw config for debugging
 		if data, err := json.Marshal(cfg); err == nil {
 			slog.Debug("parsed config", "config", string(data))
@@ -80,7 +84,7 @@ func main() {
 	coord := cameracoordinator.NewCameraCoordinator(detectors...)
 
 	// build notifiers always from cfg value
-	notifiers := buildNotifiers(cfg.Notifiers)
+	notifiers := buildNotifiers(cfg.Notifiers, configDir)
 	if len(notifiers) == 0 {
 		slog.Error("no notifiers enabled in configuration")
 		os.Exit(1)

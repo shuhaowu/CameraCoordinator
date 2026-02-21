@@ -59,7 +59,7 @@ func buildDetectors(cfg DetectorConfig) []cameracoordinator.CameraDetector {
 }
 
 // buildNotifiers is analogous to buildDetectors.
-func buildNotifiers(cfg NotifierConfig) []cameracoordinator.Notifier {
+func buildNotifiers(cfg NotifierConfig, configDir string) []cameracoordinator.Notifier {
 	var result []cameracoordinator.Notifier
 
 	if cfg.Print.Enabled {
@@ -70,6 +70,7 @@ func buildNotifiers(cfg NotifierConfig) []cameracoordinator.Notifier {
 		result = append(result, cameracoordinator.NewScriptNotifier(cameracoordinator.ScriptNotifierConfig{
 			OnScript:  cfg.Script.OnScript,
 			OffScript: cfg.Script.OffScript,
+			BaseDir:   configDir,
 		}))
 	}
 
