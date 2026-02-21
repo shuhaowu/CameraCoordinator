@@ -15,14 +15,14 @@ import (
 
 // defaultConfig contains the built-in configuration used when no external
 // file is provided.  It enables the EBPF vb2_ioctl detector and the print
-// adapter.
+// notifier.
 var defaultConfig = AppConfig{
 	Detectors: DetectorConfig{
 		EBPFVb2Ioctl: struct {
 			Enabled bool `json:"enabled,omitempty"`
 		}{Enabled: true},
 	},
-	Adapters: AdapterConfig{
+	Notifiers: NotifierConfig{
 		Print: struct {
 			Enabled bool `json:"enabled,omitempty"`
 		}{Enabled: true},
@@ -32,7 +32,7 @@ var defaultConfig = AppConfig{
 func main() {
 	// parse command-line options early so we can configure logging
 	verbose := flag.Bool("verbose", false, "enable debug logging")
-	configPath := flag.String("config", "", "path to JSON configuration file defining detectors and adapters")
+	configPath := flag.String("config", "", "path to JSON configuration file defining detectors and notifiers")
 	flag.Parse()
 
 	// set default slog level based on verbose flag
@@ -46,7 +46,7 @@ func main() {
 	defer cancel()
 
 	// prepare configuration; if no path is specified we fall back to the
-	// built-in default that enables ebpf and print adapters.
+	// built-in default that enables ebpf and print notifiers.
 	cfg := defaultConfig
 	if *configPath != "" {
 		f, err := os.Open(*configPath)
@@ -68,7 +68,7 @@ func main() {
 		}
 	}
 
-	// build detectors and adapters from configuration (or fall back to defaults)
+	// build detectors and notifiers from configuration (or fall back to defaults)
 	// build detectors always from cfg value
 	detectors := buildDetectors(cfg.Detectors)
 
@@ -79,17 +79,17 @@ func main() {
 
 	coord := cameracoordinator.NewCameraCoordinator(detectors...)
 
-	// build adapters always from cfg value
-	adapters := buildAdapters(cfg.Adapters)
-	if len(adapters) == 0 {
-		slog.Error("no adapters enabled in configuration")
+	// build notifiers always from cfg value
+	notifiers := buildNotifiers(cfg.Notifiers)
+	if len(notifiers) == 0 {
+		slog.Error("no notifiers enabled in configuration")
 		os.Exit(1)
 	}
 
 	// we still want to log events, but now go through an EventBroadcaster so
-	// we can easily add additional adapters later without touching the
+	// we can easily add additional notifiers later without touching the
 	// coordinator.
-	broadcaster := cameracoordinator.NewEventBroadcaster(len(adapters), 1) // one output per adapter, small buffer
+	broadcaster := cameracoordinator.NewEventBroadcaster(len(notifiers), 1) // one output per notifier, small buffer
 
 	var wg sync.WaitGroup
 
@@ -101,8 +101,8 @@ func main() {
 		_ = coord.Run(ctx)
 	}()
 
-	// Run the broadcaster which implements Adapter and sits between the
-	// coordinator and the configured adapters.  Each adapter will read from
+	// Run the broadcaster which implements Notifier and sits between the
+	// coordinator and the configured notifiers.  Each notifier will read from
 	// one of the broadcaster's output channels.
 	wg.Add(1)
 	go func() {
@@ -110,14 +110,14 @@ func main() {
 		_ = broadcaster.Run(ctx, coord.Events())
 	}()
 
-	// Run each configured adapter against its broadcaster output channel.
-	for i, adapter := range adapters {
+	// Run each configured notifier against its broadcaster output channel.
+	for i, notifier := range notifiers {
 		wg.Add(1)
 		idx := i
-		ad := adapter
+		notif := notifier
 		go func() {
 			defer wg.Done()
-			_ = ad.Run(ctx, broadcaster.Channel(idx))
+			_ = notif.Run(ctx, broadcaster.Channel(idx))
 		}()
 	}
 

@@ -7,8 +7,8 @@ import (
 	"os/exec"
 )
 
-// ScriptAdapterConfig holds the paths to scripts to run on camera events.
-type ScriptAdapterConfig struct {
+// ScriptNotifierConfig holds the paths to scripts to run on camera events.
+type ScriptNotifierConfig struct {
 	// OnScript is the path to the script to run when recording starts.
 	// If empty, no script is run.
 	OnScript string
@@ -18,18 +18,18 @@ type ScriptAdapterConfig struct {
 	OffScript string
 }
 
-// ScriptAdapter is an Adapter that executes shell scripts on camera recording
+// ScriptNotifier is a Notifier that executes shell scripts on camera recording
 // on/off events.
-type ScriptAdapter struct {
-	cfg ScriptAdapterConfig
+type ScriptNotifier struct {
+	cfg ScriptNotifierConfig
 
 	// commandContext is used to create *exec.Cmd instances. For testing purposes
 	commandContext func(ctx context.Context, name string, args ...string) *exec.Cmd
 }
 
-// NewScriptAdapter creates a ScriptAdapter with the given configuration.
-func NewScriptAdapter(cfg ScriptAdapterConfig) *ScriptAdapter {
-	return &ScriptAdapter{
+// NewScriptNotifier creates a ScriptNotifier with the given configuration.
+func NewScriptNotifier(cfg ScriptNotifierConfig) *ScriptNotifier {
+	return &ScriptNotifier{
 		cfg:            cfg,
 		commandContext: exec.CommandContext,
 	}
@@ -37,7 +37,7 @@ func NewScriptAdapter(cfg ScriptAdapterConfig) *ScriptAdapter {
 
 // Run listens for CameraEvents and executes the configured scripts until ctx
 // is cancelled or the events channel is closed.
-func (s *ScriptAdapter) Run(ctx context.Context, events <-chan CameraEvent) error {
+func (s *ScriptNotifier) Run(ctx context.Context, events <-chan CameraEvent) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -54,7 +54,7 @@ func (s *ScriptAdapter) Run(ctx context.Context, events <-chan CameraEvent) erro
 }
 
 // handle runs the appropriate script for the given event.
-func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
+func (s *ScriptNotifier) handle(ctx context.Context, event CameraEvent) {
 	var script string
 	switch event.Type {
 	case CameraEventRecordingOn:
@@ -62,7 +62,7 @@ func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
 	case CameraEventRecordingOff:
 		script = s.cfg.OffScript
 	default:
-		slog.Warn("script adapter: unknown event type, ignoring",
+		slog.Warn("script notifier: unknown event type, ignoring",
 			"event", event.Type,
 			"device", event.VideoDevice,
 		)
@@ -73,7 +73,7 @@ func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
 		return
 	}
 
-	slog.Info("script adapter: running script",
+	slog.Info("script notifier: running script",
 		"script", script,
 		"event", event.Type.String(),
 		"device", event.VideoDevice,
@@ -83,7 +83,7 @@ func (s *ScriptAdapter) handle(ctx context.Context, event CameraEvent) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		slog.Error("script adapter: script failed",
+		slog.Error("script notifier: script failed",
 			"script", script,
 			"event", event.Type.String(),
 			"device", event.VideoDevice,

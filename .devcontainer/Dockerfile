@@ -25,6 +25,8 @@ RUN set -xe;\
         llvm \
         bpftool \
         libbpf-dev \
+        # libudev-dev is for litra integration
+        libudev-dev \
     ; \
     apt-get clean; \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*;

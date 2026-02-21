@@ -88,7 +88,7 @@ func TestEventBroadcaster_BasicFanOut(t *testing.T) {
 }
 
 // TestEventBroadcaster_MultipleEvents verifies that a sequence of events is
-// delivered to all adapters in the same order as they were sent.
+// delivered to all notifiers in the same order as they were sent.
 //
 // The broadcaster delivers each event to all outputs before moving to the next,
 // so consumers must read concurrently to avoid deadlocking the broadcaster.
@@ -139,7 +139,7 @@ func TestEventBroadcaster_MultipleEvents(t *testing.T) {
 
 // TestEventBroadcaster_SourceClosedClosesOutputs verifies that when the source
 // channel is closed, Run exits and all output channels are subsequently closed.
-// Adapters depend on this to detect "no more events" without context awareness.
+// Notifiers depend on this to detect "no more events" without context awareness.
 func TestEventBroadcaster_SourceClosedClosesOutputs(t *testing.T) {
 	source := make(chan CameraEvent)
 	b := NewEventBroadcaster(2, 0)

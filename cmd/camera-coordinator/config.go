@@ -15,8 +15,8 @@ type DetectorConfig struct {
 	} `json:"ebpf_vb2_ioctl"`
 }
 
-// AdapterConfig holds per-adapter configuration.
-type AdapterConfig struct {
+// NotifierConfig holds per-notifier configuration.
+type NotifierConfig struct {
 	Print struct {
 		Enabled bool `json:"enabled,omitempty"`
 	} `json:"print"`
@@ -31,7 +31,7 @@ type AdapterConfig struct {
 // binary.
 type AppConfig struct {
 	Detectors DetectorConfig `json:"detectors"`
-	Adapters  AdapterConfig  `json:"adapters"`
+	Notifiers NotifierConfig `json:"notifiers"`
 }
 
 // LoadConfig reads and parses an AppConfig from the supplied reader.
@@ -58,16 +58,16 @@ func buildDetectors(cfg DetectorConfig) []cameracoordinator.CameraDetector {
 	return result
 }
 
-// buildAdapters is analogous to buildDetectors.
-func buildAdapters(cfg AdapterConfig) []cameracoordinator.Adapter {
-	var result []cameracoordinator.Adapter
+// buildNotifiers is analogous to buildDetectors.
+func buildNotifiers(cfg NotifierConfig) []cameracoordinator.Notifier {
+	var result []cameracoordinator.Notifier
 
 	if cfg.Print.Enabled {
-		result = append(result, cameracoordinator.NewPrintAdapter())
+		result = append(result, cameracoordinator.NewPrintNotifier())
 	}
 
 	if cfg.Script.Enabled {
-		result = append(result, cameracoordinator.NewScriptAdapter(cameracoordinator.ScriptAdapterConfig{
+		result = append(result, cameracoordinator.NewScriptNotifier(cameracoordinator.ScriptNotifierConfig{
 			OnScript:  cfg.Script.OnScript,
 			OffScript: cfg.Script.OffScript,
 		}))

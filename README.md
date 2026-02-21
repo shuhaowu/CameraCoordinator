@@ -11,18 +11,18 @@ Configuration
 
 The `camera-coordinator` binary accepts an optional JSON configuration via
 `-config /path/to/file.json`.  When no config is provided the program uses a built-in default: the
-EBPF `vb2_ioctl` detector and the `print` adapter are enabled automatically.
+EBPF `vb2_ioctl` detector and the `print` notifier are enabled automatically.
 This ensures the binary is useful out of the box while still allowing an
 override via `-config`.
 
-A simple configuration enabling only the print adapter looks like:
+A simple configuration enabling only the print notifier looks like:
 
 ```json
 {
   "detectors": {
     "ebpf_vb2_ioctl": {}
   },
-  "adapters": {
+  "notifiers": {
     "print": {}
   }
 }

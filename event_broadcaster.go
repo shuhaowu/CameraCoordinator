@@ -5,17 +5,17 @@ import (
 	"log/slog"
 )
 
-// Compile-time check that *EventBroadcaster implements Adapter.
-var _ Adapter = (*EventBroadcaster)(nil)
+// Compile-time check that *EventBroadcaster implements Notifier.
+var _ Notifier = (*EventBroadcaster)(nil)
 
 // EventBroadcaster fans out camera events from a single coordinator source
-// channel to a fixed set of adapter channels. Each output channel is created
+// channel to a fixed set of notifier channels. Each output channel is created
 // by the broadcaster and can be retrieved via Channel.
 //
-// EventBroadcaster implements the Adapter interface: Run accepts the source
+// EventBroadcaster implements the Notifier interface: Run accepts the source
 // events channel at call time. It blocks until either the source channel is
 // closed or ctx is cancelled. When Run returns, all output channels are closed
-// so that adapter goroutines can detect the shutdown naturally.
+// so that notifier goroutines can detect the shutdown naturally.
 type EventBroadcaster struct {
 	outputs []chan CameraEvent
 }
@@ -35,13 +35,13 @@ func NewEventBroadcaster(n int, bufSize int) *EventBroadcaster {
 }
 
 // Channel returns the i-th output channel (0-indexed) as a receive-only
-// channel suitable for passing to an Adapter.
+// channel suitable for passing to a Notifier.
 func (b *EventBroadcaster) Channel(i int) <-chan CameraEvent {
 	return b.outputs[i]
 }
 
 // Run reads events from events and copies each event to every output channel
-// in order. It implements the Adapter interface. It returns nil when events is
+// in order. It implements the Notifier interface. It returns nil when events is
 // closed or ctx is cancelled. All output channels are closed before Run returns.
 func (b *EventBroadcaster) Run(ctx context.Context, events <-chan CameraEvent) error {
 	logger := slog.With("component", "EventBroadcaster")

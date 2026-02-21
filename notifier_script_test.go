@@ -19,7 +19,7 @@ type call struct {
 
 // fakeCommand returns a fake commandContext implementation along with a
 // channel that receives every invocation. The returned function can be
-// assigned directly to a ScriptAdapter's commandContext field
+// assigned directly to a ScriptNotifier's commandContext field
 func fakeCommand(fail bool) (func(ctx context.Context, name string, args ...string) *exec.Cmd, <-chan call) {
 	ch := make(chan call, 100)
 	fn := func(ctx context.Context, name string, args ...string) *exec.Cmd {
@@ -33,7 +33,7 @@ func fakeCommand(fail bool) (func(ctx context.Context, name string, args ...stri
 }
 
 // sendEvent submits an event to the channel with a timeout to avoid hangs in
-// case of a bug in the adapter.
+// case of a bug in the notifier.
 func sendEvent(t *testing.T, events chan<- CameraEvent, ev CameraEvent) {
 	t.Helper()
 	select {
@@ -56,13 +56,13 @@ func recvCall(t *testing.T, ch <-chan call) *call {
 	}
 }
 
-func TestScriptAdapter_OnEvent(t *testing.T) {
+func TestScriptNotifier_OnEvent(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on"})
+	a := NewScriptNotifier(ScriptNotifierConfig{OnScript: "on"})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -80,13 +80,13 @@ func TestScriptAdapter_OnEvent(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_OffEvent(t *testing.T) {
+func TestScriptNotifier_OffEvent(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{OffScript: "off"})
+	a := NewScriptNotifier(ScriptNotifierConfig{OffScript: "off"})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -104,13 +104,13 @@ func TestScriptAdapter_OffEvent(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_NoScriptConfigured(t *testing.T) {
+func TestScriptNotifier_NoScriptConfigured(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a := NewScriptNotifier(ScriptNotifierConfig{})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -125,13 +125,13 @@ func TestScriptAdapter_NoScriptConfigured(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_ClosedChannel(t *testing.T) {
+func TestScriptNotifier_ClosedChannel(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a := NewScriptNotifier(ScriptNotifierConfig{})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -147,13 +147,13 @@ func TestScriptAdapter_ClosedChannel(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_ContextCancellation(t *testing.T) {
+func TestScriptNotifier_ContextCancellation(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{})
+	a := NewScriptNotifier(ScriptNotifierConfig{})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -166,7 +166,7 @@ func TestScriptAdapter_ContextCancellation(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_FailingScript(t *testing.T) {
+func TestScriptNotifier_FailingScript(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(true)
 
 	// capture logs to ensure error format
@@ -179,7 +179,7 @@ func TestScriptAdapter_FailingScript(t *testing.T) {
 	events := make(chan CameraEvent, 2)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on"})
+	a := NewScriptNotifier(ScriptNotifierConfig{OnScript: "on"})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
@@ -208,13 +208,13 @@ func TestScriptAdapter_FailingScript(t *testing.T) {
 	}
 }
 
-func TestScriptAdapter_BothScripts(t *testing.T) {
+func TestScriptNotifier_BothScripts(t *testing.T) {
 	fakeCommandContext, callsCh := fakeCommand(false)
 
 	events := make(chan CameraEvent, 2)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	a := NewScriptAdapter(ScriptAdapterConfig{OnScript: "on", OffScript: "off"})
+	a := NewScriptNotifier(ScriptNotifierConfig{OnScript: "on", OffScript: "off"})
 	a.commandContext = fakeCommandContext
 	wg.Go(func() {
 		_ = a.Run(ctx, events)
