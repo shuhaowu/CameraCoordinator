@@ -93,10 +93,18 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 	}
 
 	eventHandlerWg.Go(func() {
-		// Track active "on" counts per video device. The coordinator emits a
-		// CameraEventRecordingOn when the count transitions 0->1 and emits a
-		// CameraEventRecordingOff when the count transitions 1->0.
-		active := make(map[string]int)
+		// Track which detectors are currently "on" per video device.
+		// Key: videoDevice → set of detector names that have sent an ON without a
+		// matching OFF.  The coordinator emits CameraEventRecordingOn when the set
+		// transitions from empty to non-empty (first unique detector goes active)
+		// and emits CameraEventRecordingOff when the set transitions back to empty
+		// (last active detector sends OFF).
+		//
+		// Consecutive ON events from the *same* detector for the same device are
+		// deduplicated: only the first counts.  This means a rogue detector that
+		// fires ON multiple times cannot inflate the reference count and prevent the
+		// coordinator from ever emitting the matching OFF.
+		active := make(map[string]map[string]bool)
 
 		for {
 			select {
@@ -115,34 +123,45 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 
 				switch ev.Type {
 				case CameraEventRecordingOn:
-					prev := active[ev.VideoDevice]
-					active[ev.VideoDevice] = prev + 1
-					if prev == 0 {
+					if active[ev.VideoDevice] == nil {
+						active[ev.VideoDevice] = make(map[string]bool)
+					}
+					if active[ev.VideoDevice][ev.Detector] {
+						// This detector already has an outstanding ON for this
+						// device — ignore the duplicate so it does not inflate
+						// the reference count.
+						logger.Debug("duplicate on from same detector; ignoring",
+							"detector", ev.Detector,
+							"video_device", ev.VideoDevice,
+						)
+						break
+					}
+					wasEmpty := len(active[ev.VideoDevice]) == 0
+					active[ev.VideoDevice][ev.Detector] = true
+					if wasEmpty {
 						// first active detector for this device -> forward ON
 						logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
 						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice})
 					}
 
 				case CameraEventRecordingOff:
-				// Read current active count (missing key -> zero). Do not allow
-				// the counter to drop below zero — treat absent/zero as a stray
-				// OFF and ignore it.
-				prev := active[ev.VideoDevice]
-				if prev == 0 {
-					logger.Debug("stray/off without prior on; ignoring", "video_device", ev.VideoDevice)
-					break
-				}
+					detectors, exists := active[ev.VideoDevice]
+					if !exists || !detectors[ev.Detector] {
+						// No prior ON from this detector — treat as stray and ignore.
+						logger.Debug("stray/off without prior on; ignoring",
+							"detector", ev.Detector,
+							"video_device", ev.VideoDevice,
+						)
+						break
+					}
+					delete(detectors, ev.Detector)
+					if len(detectors) == 0 {
+						// last active detector turned off -> forward OFF and remove state
+						delete(active, ev.VideoDevice)
+						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
+						c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
+					}
 
-				if prev == 1 {
-					// last active detector -> forward OFF and remove state
-					delete(active, ev.VideoDevice)
-					logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-					c.emitEvent(ctx, CameraEvent{Detector: ev.Detector, Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
-					break
-				}
-
-				// more than one active detector — decrement the counter (stays >= 1)
-				active[ev.VideoDevice] = prev - 1
 				default:
 					logger.Warn("unknown event type", "type", ev.Type, "video_device", ev.VideoDevice, "detector", ev.Detector)
 				}

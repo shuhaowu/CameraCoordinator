@@ -119,9 +119,11 @@ func TestCameraCoordinatorIgnoresOffWithoutPriorOn(t *testing.T) {
 	}
 }
 
-func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
-	// Simpler concurrency: multiple ONs collapse to a single ON and the
-	// corresponding OFF is emitted only after the last OFF.
+func TestCameraCoordinatorDuplicateOnsFromSameDetectorCountOnce(t *testing.T) {
+	// A single detector that fires multiple consecutive ON events for the same
+	// device must only be counted once.  The first OFF from that detector should
+	// therefore immediately emit a coordinator OFF — not require a matching number
+	// of OFFs equal to the number of ONs received.
 	detector := newControllableDetector()
 	coordinator := NewCameraCoordinator(detector)
 
@@ -136,34 +138,81 @@ func TestCameraCoordinatorEmitsOnlyLastOffForOverlappingOnes(t *testing.T) {
 		wg.Wait()
 	}()
 
-	detector.events <- CameraEvent{Type: CameraEventRecordingOn, VideoDevice: "video2"}
-	detector.events <- CameraEvent{Type: CameraEventRecordingOn, VideoDevice: "video2"}
+	// First ON — should produce exactly one coordinator ON.
+	detector.events <- CameraEvent{Detector: "det", Type: CameraEventRecordingOn, VideoDevice: "video2"}
+	// Second ON from the *same* detector — must be deduplicated.
+	detector.events <- CameraEvent{Detector: "det", Type: CameraEventRecordingOn, VideoDevice: "video2"}
 
 	evs := receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
 	if len(evs) != 1 {
-		t.Fatalf("video2: expected exactly one event, got %d (events: %v)", len(evs), evs)
+		t.Fatalf("video2: expected exactly one ON event, got %d (events: %v)", len(evs), evs)
 	}
+	assertEvent(t, evs[0], CameraEventRecordingOn, "video2")
 
-	ev := evs[0]
-	assertEvent(t, ev, CameraEventRecordingOn, "video2")
-
-	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "video2"}
-
-	// no events should be emitted since the first OFF is ignored while there's still an active ON
-	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
-	if len(evs) != 0 {
-		t.Fatalf("video2: expected no events, got %d (events: %v)", len(evs), evs)
-	}
-
-	detector.events <- CameraEvent{Type: CameraEventRecordingOff, VideoDevice: "video2"}
+	// First OFF — because only one unique detector is active, this should
+	// immediately produce a coordinator OFF (not be absorbed by a phantom count).
+	detector.events <- CameraEvent{Detector: "det", Type: CameraEventRecordingOff, VideoDevice: "video2"}
 
 	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
 	if len(evs) != 1 {
-		t.Fatalf("video2: expected exactly one event, got %d (events: %v)", len(evs), evs)
+		t.Fatalf("video2: expected exactly one OFF event after first OFF, got %d (events: %v)", len(evs), evs)
+	}
+	assertEvent(t, evs[0], CameraEventRecordingOff, "video2")
+
+	// Any further OFFs are stray and must be ignored.
+	detector.events <- CameraEvent{Detector: "det", Type: CameraEventRecordingOff, VideoDevice: "video2"}
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 0 {
+		t.Fatalf("video2: expected no events for stray OFF, got %d (events: %v)", len(evs), evs)
+	}
+}
+
+func TestCameraCoordinatorMultipleDetectorsRequireAllOffsBeforeEmittingOff(t *testing.T) {
+	// When two *different* detectors both report ON for the same device, the
+	// coordinator must wait until both have sent an OFF before forwarding the
+	// coordinator-level OFF event.  This verifies that the per-detector dedup
+	// only collapses repeated events from the *same* detector, not distinct ones.
+	detectorA := newControllableDetector()
+	detectorB := newControllableDetector()
+	coordinator := NewCameraCoordinator(detectorA, detectorB)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		coordinator.Run(ctx)
+	})
+	defer func() {
+		cancel()
+		close(detectorA.events)
+		close(detectorB.events)
+		wg.Wait()
+	}()
+
+	// Both detectors fire ON for the same device.
+	detectorA.events <- CameraEvent{Detector: "A", Type: CameraEventRecordingOn, VideoDevice: "video3"}
+	detectorB.events <- CameraEvent{Detector: "B", Type: CameraEventRecordingOn, VideoDevice: "video3"}
+
+	// Only one coordinator ON should be emitted.
+	evs := receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 1 {
+		t.Fatalf("video3: expected exactly one ON event, got %d (events: %v)", len(evs), evs)
+	}
+	assertEvent(t, evs[0], CameraEventRecordingOn, "video3")
+
+	// Detector A sends OFF — B is still active, so no coordinator OFF yet.
+	detectorA.events <- CameraEvent{Detector: "A", Type: CameraEventRecordingOff, VideoDevice: "video3"}
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 0 {
+		t.Fatalf("video3: expected no OFF event while detector B is still active, got %d (events: %v)", len(evs), evs)
 	}
 
-	ev = evs[0]
-	assertEvent(t, ev, CameraEventRecordingOff, "video2")
+	// Detector B sends OFF — now all detectors are off, coordinator OFF is emitted.
+	detectorB.events <- CameraEvent{Detector: "B", Type: CameraEventRecordingOff, VideoDevice: "video3"}
+	evs = receiveEvents(t, coordinator.Events(), 1, defaultTimeout)
+	if len(evs) != 1 {
+		t.Fatalf("video3: expected exactly one OFF event after both detectors are off, got %d (events: %v)", len(evs), evs)
+	}
+	assertEvent(t, evs[0], CameraEventRecordingOff, "video3")
 }
 
 func TestCameraCoordinatorIgnoresRepeatedOffsWithoutPriorOn(t *testing.T) {
