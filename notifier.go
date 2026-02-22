@@ -33,8 +33,10 @@ func (p *PrintNotifier) Run(ctx context.Context, events <-chan CameraEvent) erro
 			}
 
 			slog.Info("camera event",
-				"event", event.Type.String(),
-				"device", event.VideoDevice,
+					"event", event.Type.String(),
+					"device", event.VideoDevice,
+					"card", event.Card,
+					"bus_info", event.BusInfo,
 			)
 		}
 	}

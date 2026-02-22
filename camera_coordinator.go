@@ -163,7 +163,13 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					if wasEmpty {
 						// first active detector for this device -> forward ON
 						logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice, Capability: cap})
+						c.emitEvent(ctx, CameraEvent{
+							Detector:    "coordinator",
+							Type:        CameraEventRecordingOn,
+							VideoDevice: ev.VideoDevice,
+							Card:        cap.CardString(),
+							BusInfo:     cap.BusInfoString(),
+						})
 					}
 
 				case CameraEventRecordingOff:
@@ -181,7 +187,13 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 						// last active detector turned off -> forward OFF and remove state
 						delete(active, ev.VideoDevice)
 						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice, Capability: cap})
+						c.emitEvent(ctx, CameraEvent{
+							Detector:    "coordinator",
+							Type:        CameraEventRecordingOff,
+							VideoDevice: ev.VideoDevice,
+							Card:        cap.CardString(),
+							BusInfo:     cap.BusInfoString(),
+						})
 					}
 
 				default:
