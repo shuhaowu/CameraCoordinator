@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"log/slog"
 	"os"
@@ -84,7 +85,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	coord := cameracoordinator.NewCameraCoordinator(detectors...)
+	coord := cameracoordinator.NewCameraCoordinator()
 
 	// build notifiers always from cfg value
 	notifiers := buildNotifiers(cfg.Notifiers, configDir)
@@ -98,14 +99,39 @@ func main() {
 	// coordinator.
 	broadcaster := cameracoordinator.NewEventBroadcaster(len(notifiers), 1) // one output per notifier, small buffer
 
+	allEvents := make(chan cameracoordinator.CameraEvent)
+
+	// Start each detector in its own goroutine. When all detectors have
+	// finished, close allEvents so the coordinator knows to stop.
+	var detectorWg sync.WaitGroup
+	for _, det := range detectors {
+		det := det
+		detectorWg.Go(func() {
+			inner := slog.With("detector", det.Name())
+			inner.Debug("starting detector")
+			defer inner.Debug("stopping detector")
+			if err := det.Run(ctx, allEvents); err != nil && !errors.Is(err, context.Canceled) {
+				slog.Error("detector ran into an error", "detector", det.Name(), "err", err)
+			}
+		})
+	}
+
 	var wg sync.WaitGroup
+
+	// Close allEvents once all detectors are done so the coordinator exits.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		detectorWg.Wait()
+		close(allEvents)
+	}()
 
 	// Run the coordinator in background; it logs errors itself and returns nil.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		slog.Info("detecting when camera recording starts/stops...")
-		_ = coord.Run(ctx)
+		_ = coord.Run(ctx, allEvents)
 	}()
 
 	// Run the broadcaster which implements Notifier and sits between the
