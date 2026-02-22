@@ -25,6 +25,9 @@ type NotifierConfig struct {
 		OnScript  string `json:"on_script,omitempty"`
 		OffScript string `json:"off_script,omitempty"`
 	} `json:"script"`
+	DBus struct {
+		Enabled bool `json:"enabled,omitempty"`
+	} `json:"dbus"`
 }
 
 // AppConfig represents the JSON configuration for the camera-coordinator
@@ -72,6 +75,10 @@ func buildNotifiers(cfg NotifierConfig, configDir string) []cameracoordinator.No
 			OffScript: cfg.Script.OffScript,
 			BaseDir:   configDir,
 		}))
+	}
+
+	if cfg.DBus.Enabled {
+		result = append(result, cameracoordinator.NewDBusNotifier())
 	}
 
 	return result

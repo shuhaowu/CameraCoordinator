@@ -72,6 +72,30 @@ func TestBuildDetectorsAndNotifiers_ExplicitEnable(t *testing.T) {
 	}
 }
 
+func TestBuildNotifiers_DBusEnabled(t *testing.T) {
+	cfg := AppConfig{}
+	cfg.Notifiers.DBus.Enabled = true
+
+	ads := buildNotifiers(cfg.Notifiers, "")
+	if len(ads) != 1 {
+		t.Fatalf("expected 1 notifier when dbus enabled, got %d", len(ads))
+	}
+	if _, ok := ads[0].(*cameracoordinator.DBusNotifier); !ok {
+		t.Fatalf("notifier had wrong type: %T", ads[0])
+	}
+}
+
+func TestLoadConfig_DBusNotifier(t *testing.T) {
+	jsonStr := `{"notifiers": {"dbus": {"enabled": true}}}`
+	cfg, err := LoadConfig(strings.NewReader(jsonStr))
+	if err != nil {
+		t.Fatalf("LoadConfig returned error: %v", err)
+	}
+	if !cfg.Notifiers.DBus.Enabled {
+		t.Fatal("expected dbus notifier to be enabled")
+	}
+}
+
 func TestDisabledEntries(t *testing.T) {
 	cfg := AppConfig{}
 	cfg.Detectors.EBPFVb2Ioctl.Enabled = false

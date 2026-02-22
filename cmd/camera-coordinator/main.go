@@ -27,6 +27,9 @@ var defaultConfig = AppConfig{
 		Print: struct {
 			Enabled bool `json:"enabled,omitempty"`
 		}{Enabled: true},
+		DBus: struct {
+			Enabled bool `json:"enabled,omitempty"`
+		}{Enabled: true},
 	},
 }
 
