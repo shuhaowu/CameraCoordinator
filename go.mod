@@ -4,6 +4,15 @@ go 1.25.5
 
 require github.com/cilium/ebpf v0.20.0
 
-require golang.org/x/sys v0.37.0 // indirect
+require (
+	github.com/bigkevmcd/go-configparser v0.0.0-20251110123434-de62ed489b4f // indirect
+	github.com/kharyam/go-litra-driver/config v0.0.0-20260218011635-1ab78146269e // indirect
+	github.com/kharyam/go-litra-driver/lib v0.0.0-20260218014924-3052adddc9b0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/rs/zerolog v1.34.0 // indirect
+	github.com/sstallion/go-hid v0.15.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+)
 
 tool github.com/cilium/ebpf/cmd/bpf2go
