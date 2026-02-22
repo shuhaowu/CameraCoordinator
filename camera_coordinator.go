@@ -61,7 +61,6 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 	allEvents := make(chan CameraEvent)
 
 	var detectorWg sync.WaitGroup
-	var forwarderWg sync.WaitGroup
 	var eventHandlerWg sync.WaitGroup
 	for _, d := range c.detectors {
 		det := d
@@ -71,29 +70,10 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 			innerLogger.Debug("starting detector")
 			defer innerLogger.Debug("stopping detector")
 
-			err := det.Run(ctx)
+			err := det.Run(ctx, allEvents)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				innerLogger.Error("detector ran into an error", "err", err)
 				// TODO: send the error back!
-			}
-		})
-
-		forwarderWg.Go(func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case ev, ok := <-det.Events():
-					if !ok {
-						return
-					}
-
-					select {
-					case <-ctx.Done():
-						return
-					case allEvents <- ev:
-					}
-				}
 			}
 		})
 	}
@@ -205,14 +185,10 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 
 	detectorWg.Wait()
 
-	logger.Debug("all detector has quit, waiting for forwarders to finish...")
+	logger.Debug("all detector has quit, waiting for event handler to finish...")
 
 	// If all detectors have quit or failed, cancel the remaining goroutines.
 	cancel()
-
-	forwarderWg.Wait()
-
-	logger.Debug("all forwarder has quit, waiting for event handler to finish...")
 
 	eventHandlerWg.Wait()
 

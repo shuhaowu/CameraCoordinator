@@ -3,7 +3,6 @@ package cameracoordinator
 import "context"
 
 type CameraDetector interface {
-	Events() <-chan CameraEvent
-	Run(context.Context) error
+	Run(context.Context, chan<- CameraEvent) error
 	Name() string
 }

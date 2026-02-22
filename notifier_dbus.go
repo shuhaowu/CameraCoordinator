@@ -2,16 +2,12 @@ package cameracoordinator
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/godbus/dbus/v5"
 )
 
 const (
-	// DBusServiceName is the well-known name claimed on the system bus.
-	DBusServiceName = "io.github.shuhaowu.CameraCoordinator"
-
 	// DBusObjectPath is the object path used when emitting signals.
 	DBusObjectPath = dbus.ObjectPath("/io/github/shuhaowu/CameraCoordinator")
 
@@ -34,8 +30,7 @@ type DBusNotifierSignalBody struct {
 }
 
 // DBusNotifier is a Notifier that emits a CameraEvent signal on the system
-// DBus bus whenever a camera recording starts or stops.  The notifier claims
-// the well-known name DBusServiceName so that clients can filter by sender.
+// DBus bus whenever a camera recording starts or stops.
 type DBusNotifier struct{}
 
 // NewDBusNotifier creates a DBusNotifier.
@@ -53,20 +48,6 @@ func (d *DBusNotifier) Run(ctx context.Context, events <-chan CameraEvent) error
 		return err
 	}
 	defer conn.Close()
-
-	reply, err := conn.RequestName(DBusServiceName, dbus.NameFlagDoNotQueue)
-	if err != nil {
-		slog.Error("dbus notifier: failed to request bus name", "name", DBusServiceName, "err", err)
-		return err
-	}
-	if reply != dbus.RequestNameReplyPrimaryOwner {
-		err = errors.New("dbus notifier: could not acquire well-known name, another instance may be running")
-		slog.Error(err.Error(),
-			"name", DBusServiceName,
-			"reply", reply,
-		)
-		return err
-	}
 
 	for {
 		select {

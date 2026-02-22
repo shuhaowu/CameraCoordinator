@@ -20,13 +20,11 @@ import (
 const ebpfVb2IoctlDetectorName = "EBPFVb2IoctlStreamDetector"
 
 type EBPFVb2IoctlStreamDetector struct {
-	events chan CameraEvent
 	logger *slog.Logger
 }
 
 func NewEBPFVb2IoctlStreamDetector() *EBPFVb2IoctlStreamDetector {
 	return &EBPFVb2IoctlStreamDetector{
-		events: make(chan CameraEvent),
 		logger: slog.With("component", ebpfVb2IoctlDetectorName),
 	}
 }
@@ -35,11 +33,7 @@ func (d *EBPFVb2IoctlStreamDetector) Name() string {
 	return ebpfVb2IoctlDetectorName
 }
 
-func (d *EBPFVb2IoctlStreamDetector) Events() <-chan CameraEvent {
-	return d.events
-}
-
-func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
+func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context, ch chan<- CameraEvent) error {
 	objs := camera_detector_vb2_ioctlObjects{}
 	if err := loadCamera_detector_vb2_ioctlObjects(&objs, nil); err != nil {
 		// To debug verifier errors, uncomment this.
@@ -135,7 +129,7 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				errCh <- nil
 				return
-			case d.events <- CameraEvent{
+			case ch <- CameraEvent{
 				Detector:    ebpfVb2IoctlDetectorName,
 				Type:        CameraEventType(ev.EventType),
 				VideoDevice: devName,
@@ -154,7 +148,6 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 	}
 
 	wg.Wait()
-	close(d.events)
 	return err
 }
 

@@ -19,20 +19,27 @@ func newControllableDetector() *testDetector {
 	}
 }
 
-func (d *testDetector) Events() <-chan CameraEvent {
-	return d.events
-}
-
 func (d *testDetector) Name() string {
 	return "testDetector"
 }
 
-func (d *testDetector) Run(ctx context.Context) error {
+func (d *testDetector) Run(ctx context.Context, ch chan<- CameraEvent) error {
 	// Tests control `d.events` directly (send + close). This Run simply
 	// waits for the provided context to be cancelled so the test can decide
 	// when the detector has finished.
-	<-ctx.Done()
-	return ctx.Err()
+	// TODO: do we even need this complicated of a control flow if the
+	// CameraCoordinator simply doesn't even run the Detector.
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case ev, open := <-d.events:
+			if !open {
+				return nil
+			}
+			ch <- ev
+		}
+	}
 }
 
 func init() {
