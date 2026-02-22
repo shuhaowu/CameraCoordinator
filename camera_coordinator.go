@@ -12,12 +12,18 @@ type CameraCoordinator struct {
 	detectors []CameraDetector
 	events    chan CameraEvent
 	started   atomic.Bool
+
+	// queryV4L2Cap looks up the V4L2 capability for the given device filename
+	// (e.g. "video0"). It is injectable so tests can stub the syscall.
+	queryV4L2Cap func(string) (V4L2Capability, error)
 }
 
 func NewCameraCoordinator(detectors ...CameraDetector) *CameraCoordinator {
 	return &CameraCoordinator{
 		detectors: detectors,
 		events:    make(chan CameraEvent),
+
+		queryV4L2Cap: V4L2DeviceCapability,
 	}
 }
 
@@ -121,6 +127,22 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					"video_device", ev.VideoDevice,
 				)
 
+				// Always query the V4L2 capability fresh so we pick up changes
+				// after a device is unplugged and replugged.
+				// Only enforce the VideoCapture gate when the device is not
+				// already being tracked: if it is active, we must still process
+				// its OFF even when the device node is gone.
+				cap, err := c.queryV4L2Cap(ev.VideoDevice)
+				if err != nil {
+					logger.Warn("failed to query V4L2 capabilities, skipping event",
+						"err", err, "video_device", ev.VideoDevice)
+					continue
+				} else if !cap.HasCapabilities(V4L2CapVideoCapture) {
+					logger.Debug("device is not a video capture device, skipping event",
+						"video_device", ev.VideoDevice)
+					continue
+				}
+
 				switch ev.Type {
 				case CameraEventRecordingOn:
 					if active[ev.VideoDevice] == nil {
@@ -141,7 +163,7 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 					if wasEmpty {
 						// first active detector for this device -> forward ON
 						logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice})
+						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOn, VideoDevice: ev.VideoDevice, Capability: cap})
 					}
 
 				case CameraEventRecordingOff:
@@ -159,7 +181,7 @@ func (c *CameraCoordinator) Run(ctx context.Context) error {
 						// last active detector turned off -> forward OFF and remove state
 						delete(active, ev.VideoDevice)
 						logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice})
+						c.emitEvent(ctx, CameraEvent{Detector: "coordinator", Type: CameraEventRecordingOff, VideoDevice: ev.VideoDevice, Capability: cap})
 					}
 
 				default:

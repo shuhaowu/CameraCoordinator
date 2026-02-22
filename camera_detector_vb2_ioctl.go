@@ -106,20 +106,6 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context) error {
 			// Determine device name and only send events for V4L2 capture devices.
 			devName := unix.ByteSliceToString(ev.Name[:])
 
-			// This will run a syscall on every event. It shouldn't be a bottleneck
-			// because video on/off should not happen that often.
-			cap, err := V4L2DeviceCapability(devName)
-			if err != nil {
-				d.logger.Warn("failed to query V4L2 capabilities, assuming not a camera", "err", err, "video_device", devName)
-				continue
-			}
-
-			if !cap.HasCapabilities(V4L2CapVideoCapture) {
-				d.logger.Debug("device is not a camera, ignoring...", "video_device", devName)
-				// Not a camera device according to V4L2 capabilities; skip.
-				continue
-			}
-
 			// Source 2 means the event is from vb2_fop_release, which can be
 			// triggered by process termination.
 			//

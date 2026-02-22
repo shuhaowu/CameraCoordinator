@@ -17,6 +17,10 @@ type CameraEvent struct {
 
 	// The video device file associated with this event, e.g. "video0".
 	VideoDevice string
+
+	// The V4L2 capability of the video device. Populated by the coordinator;
+	// may be nil when the event originates directly from a detector or in tests.
+	Capability V4L2Capability
 }
 
 func (t CameraEventType) String() string {
