@@ -7,8 +7,16 @@ import (
 	"sync/atomic"
 )
 
+// CameraCoordinator aggregates one or more detector event streams into a single
+// logical view of camera state. It deduplicates events across detectors (emits
+// one RecordingOn when the first detector goes active for a device, one
+// RecordingOff when the last one goes inactive) and fans out the resulting
+// events to a set of output channels provided at construction time.
+//
+// Each output channel is intended for a single Notifier. All output channels
+// are closed when Run returns so that downstream consumers can detect shutdown.
 type CameraCoordinator struct {
-	events  chan CameraEvent
+	outputs []chan CameraEvent
 	started atomic.Bool
 
 	// queryV4L2Cap looks up the V4L2 capability for the given device filename
@@ -16,19 +24,19 @@ type CameraCoordinator struct {
 	queryV4L2Cap func(string) (V4L2Capability, error)
 }
 
-func NewCameraCoordinator() *CameraCoordinator {
+// NewCameraCoordinator creates a CameraCoordinator that fans out deduplicated
+// camera events to the supplied output channels. The caller creates and owns
+// the channels; the coordinator closes them when Run returns.
+func NewCameraCoordinator(outputs []chan CameraEvent) *CameraCoordinator {
 	return &CameraCoordinator{
-		events:       make(chan CameraEvent),
+		outputs:      outputs,
 		queryV4L2Cap: V4L2DeviceCapability,
 	}
 }
 
-func (c *CameraCoordinator) Events() <-chan CameraEvent {
-	return c.events
-}
-
 // Run monitors the supplied events channel for camera on/off events and
-// statefully emits coordinator-level on/off events on [CameraCoordinator.Events].
+// statefully emits coordinator-level on/off events to the output channels
+// provided at construction time.
 //
 // The caller is responsible for starting the detectors and providing their
 // combined events channel. Run returns when ctx is cancelled or events is
@@ -41,13 +49,20 @@ func (c *CameraCoordinator) Events() <-chan CameraEvent {
 // The events in the buffer are not guaranteed to be processed on context
 // cancellation.
 //
+// All output channels are closed before Run returns so that downstream
+// consumers (notifiers) can detect shutdown.
+//
 // Run can only be called once.
 func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) error {
 	if c.started.Swap(true) {
 		return errors.New("camera coordinator can only be started once")
 	}
 
-	defer close(c.events)
+	defer func() {
+		for _, ch := range c.outputs {
+			close(ch)
+		}
+	}()
 
 	logger := slog.With("component", "CameraCoordinator")
 
@@ -114,7 +129,7 @@ func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) 
 				if wasEmpty {
 					// first active detector for this device -> forward ON
 					logger.Debug("emitting camera on event", "video_device", ev.VideoDevice)
-					c.emitEvent(ctx, CameraEvent{
+					c.broadcastEvent(ctx, CameraEvent{
 						Detector:    "coordinator",
 						Type:        CameraEventRecordingOn,
 						VideoDevice: ev.VideoDevice,
@@ -138,7 +153,7 @@ func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) 
 					// last active detector turned off -> forward OFF and remove state
 					delete(active, ev.VideoDevice)
 					logger.Debug("emitting camera off event", "video_device", ev.VideoDevice)
-					c.emitEvent(ctx, CameraEvent{
+					c.broadcastEvent(ctx, CameraEvent{
 						Detector:    "coordinator",
 						Type:        CameraEventRecordingOff,
 						VideoDevice: ev.VideoDevice,
@@ -154,12 +169,13 @@ func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) 
 	}
 }
 
-// emitEvent sends an event to the public events channel but respects the
-// provided context (returns immediately if ctx is done).
-func (c *CameraCoordinator) emitEvent(ctx context.Context, ev CameraEvent) {
-	select {
-	case <-ctx.Done():
-		return
-	case c.events <- ev:
+// broadcastEvent sends ev to every output channel, respecting ctx cancellation.
+func (c *CameraCoordinator) broadcastEvent(ctx context.Context, ev CameraEvent) {
+	for _, out := range c.outputs {
+		select {
+		case <-ctx.Done():
+			return
+		case out <- ev:
+		}
 	}
 }

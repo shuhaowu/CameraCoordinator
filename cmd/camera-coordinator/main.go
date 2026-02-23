@@ -85,8 +85,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	coord := cameracoordinator.NewCameraCoordinator()
-
 	// build notifiers always from cfg value
 	notifiers := buildNotifiers(cfg.Notifiers, configDir)
 	if len(notifiers) == 0 {
@@ -94,10 +92,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	// we still want to log events, but now go through an EventBroadcaster so
-	// we can easily add additional notifiers later without touching the
-	// coordinator.
-	broadcaster := cameracoordinator.NewEventBroadcaster(len(notifiers), 1) // one output per notifier, small buffer
+	// Create one output channel per notifier and wire them into the
+	// coordinator. The coordinator fans out deduplicated events to all
+	// channels directly and closes them when Run returns.
+	notifierChannels := make([]chan cameracoordinator.CameraEvent, len(notifiers))
+	for i := range notifierChannels {
+		notifierChannels[i] = make(chan cameracoordinator.CameraEvent, 1)
+	}
+
+	coord := cameracoordinator.NewCameraCoordinator(notifierChannels)
 
 	allEvents := make(chan cameracoordinator.CameraEvent)
 
@@ -134,23 +137,14 @@ func main() {
 		_ = coord.Run(ctx, allEvents)
 	}()
 
-	// Run the broadcaster which implements Notifier and sits between the
-	// coordinator and the configured notifiers.  Each notifier will read from
-	// one of the broadcaster's output channels.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		_ = broadcaster.Run(ctx, coord.Events())
-	}()
-
-	// Run each configured notifier against its broadcaster output channel.
+	// Run each configured notifier against its coordinator output channel.
 	for i, notifier := range notifiers {
 		wg.Add(1)
 		idx := i
 		notif := notifier
 		go func() {
 			defer wg.Done()
-			_ = notif.Run(ctx, broadcaster.Channel(idx))
+			_ = notif.Run(ctx, notifierChannels[idx])
 		}()
 	}
 
