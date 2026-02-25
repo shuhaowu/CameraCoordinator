@@ -1,4 +1,2 @@
-- Add CI for building and testing
-- Add test coverage information
 - Add debian packages
 - Add autolight white balance and brightness detection

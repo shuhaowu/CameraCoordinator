@@ -1,0 +1,35 @@
+when:
+  - event:
+    - push
+
+steps:
+  - name: test
+    image: golang:1.26
+    commands:
+      - .woodpecker/test.sh
+
+  - name: build
+    image: golang:1.26
+    commands:
+      - .woodpecker/deps.sh
+      - .woodpecker/build.sh
+
+  - name: upload
+    image: woodpeckerci/plugin-s3
+    depends_on:
+      - build
+    when:
+      - event: push
+        branch: main
+    settings:
+      endpoint:
+        from_secret: s3_endpoint
+      bucket:
+        from_secret: s3_bucket
+      access_key:
+        from_secret: s3_access_key
+      secret_key:
+        from_secret: s3_secret_key
+      source: build/**/*
+      target: /camera-coordinator/releases/${CI_PIPELINE_NUMBER}
+      strip_prefix: build/
