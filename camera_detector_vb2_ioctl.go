@@ -103,10 +103,9 @@ func (d *EBPFVb2IoctlStreamDetector) Run(ctx context.Context, ch chan<- CameraEv
 			// Source 2 means the event is from vb2_fop_release, which can be
 			// triggered by process termination.
 			//
-			// TODO: there might be a race condition. Not sure if vb2_fop_release is
-			// triggered before or after the process is reaped. If it's after, the PID
-			// might have been reused by another process, and we might be checking the
-			// liveness of the wrong process. We should verify the comm
+			// TODO: this doesn't quite work. Sometimes vb2_fop_release is called and
+			// the process doesn't die for another 500ms. This makes this check be
+			// subject to a lot of false positive.
 			if ev.Source == 2 {
 				err := unix.Kill(int(ev.Pid), 0)
 				// events from vb2_fop_release are generated when a fd is closed,

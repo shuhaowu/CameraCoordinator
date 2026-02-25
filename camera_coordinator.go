@@ -77,6 +77,9 @@ func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) 
 	// deduplicated: only the first counts.  This means a rogue detector that
 	// fires ON multiple times cannot inflate the reference count and prevent the
 	// coordinator from ever emitting the matching OFF.
+	//
+	// TODO: that said maybe the multi-detector idea is a bit overkill anyways. So
+	// a lot of this could be removed.
 	active := make(map[string]map[string]bool)
 
 	for {

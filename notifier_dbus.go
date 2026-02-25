@@ -15,8 +15,11 @@ const (
 	// notifier.
 	DBusInterface = "io.github.shuhaowu.CameraCoordinator"
 
+	// DBusMemberName is the member name for signals emitted by the notifier.
+	DBusMemberName = "CameraEvent"
+
 	// DBusSignalName is the fully-qualified signal name (interface.Signal).
-	DBusSignalName = DBusInterface + ".CameraEvent"
+	DBusSignalName = DBusInterface + "." + DBusMemberName
 )
 
 // DBusNotifierSignalBody is the structured payload carried by every

@@ -10,18 +10,10 @@ import (
 
 	"github.com/godbus/dbus/v5"
 	"github.com/kharyam/go-litra-driver/lib"
+	"github.com/shuhaowu/cameracoordinator"
 )
 
-const (
-	dbusObjectPath = "/io/github/shuhaowu/CameraCoordinator"
-	dbusInterface  = "io.github.shuhaowu.CameraCoordinator"
-	dbusSignalName = "CameraEvent"
-)
-
-const (
-	eventRecordingOn  uint32 = 1
-	eventRecordingOff uint32 = 2
-)
+// Use DBus constants from the shared package.
 
 func main() {
 	verbose := flag.Bool("verbose", false, "enable debug logging")
@@ -44,13 +36,12 @@ func main() {
 			slog.Error("failed to open config file", "path", *configPath, "err", err)
 			os.Exit(1)
 		}
-		loaded, err := LoadConfig(f)
+		cfg, err = LoadConfig(f)
 		f.Close()
 		if err != nil {
 			slog.Error("failed to load config", "path", *configPath, "err", err)
 			os.Exit(1)
 		}
-		cfg = loaded
 	}
 
 	slog.Info("autolight starting",
@@ -71,9 +62,9 @@ func run(ctx context.Context, cfg AppConfig) error {
 	}
 	defer conn.Close()
 
-	matchRule := dbus.WithMatchInterface(dbusInterface)
-	matchMember := dbus.WithMatchMember(dbusSignalName)
-	matchPath := dbus.WithMatchObjectPath(dbus.ObjectPath(dbusObjectPath))
+	matchRule := dbus.WithMatchInterface(cameracoordinator.DBusInterface)
+	matchMember := dbus.WithMatchMember(cameracoordinator.DBusMemberName)
+	matchPath := dbus.WithMatchObjectPath(cameracoordinator.DBusObjectPath)
 
 	if err := conn.AddMatchSignal(matchRule, matchMember, matchPath); err != nil {
 		return err
@@ -118,13 +109,7 @@ func handleSignal(sig *dbus.Signal, cfg *AppConfig, activeCameras map[string]str
 		return
 	}
 
-	var body struct {
-		Detector    string
-		Type        uint32
-		VideoDevice string
-		Card        string
-		BusInfo     string
-	}
+	var body cameracoordinator.DBusNotifierSignalBody
 
 	if err := dbus.Store(fields, &body.Detector, &body.Type, &body.VideoDevice, &body.Card, &body.BusInfo); err != nil {
 		slog.Warn("failed to decode signal body", "err", err, "body", sig.Body)
@@ -144,7 +129,7 @@ func handleSignal(sig *dbus.Signal, cfg *AppConfig, activeCameras map[string]str
 	}
 
 	switch body.Type {
-	case eventRecordingOn:
+	case uint32(cameracoordinator.CameraEventRecordingOn):
 		wasEmpty := len(activeCameras) == 0
 		activeCameras[body.VideoDevice] = struct{}{}
 
@@ -153,9 +138,11 @@ func handleSignal(sig *dbus.Signal, cfg *AppConfig, activeCameras map[string]str
 			setLights(cfg, true)
 		} else {
 			slog.Info("additional camera started recording", "video_device", body.VideoDevice, "card", body.Card, "active_count", len(activeCameras))
+			// Set lights anyways to make sure it is on if it turned off or didn't turn on the first time?
+			setLights(cfg, true)
 		}
 
-	case eventRecordingOff:
+	case uint32(cameracoordinator.CameraEventRecordingOff):
 		delete(activeCameras, body.VideoDevice)
 
 		if len(activeCameras) == 0 {
