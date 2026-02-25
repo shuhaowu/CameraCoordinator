@@ -21,12 +21,24 @@ configuration.
 
 ## Run
 
-CameraCoordinator is a root daemon as it needs to insert a BPF program to the
-kernel. Run it with the following command:
+CameraCoordinator is a root daemon as it needs to insert a BPF program into
+the kernel.
+
+Basic usage:
 
 ```bash
 sudo ./camera-coordinator
 ```
+
+Run a script when the camera is detected
+
+```bash
+sudo ./camera-coordinator -on-script path-to-on-script.sh -off-script path-to-off-script.sh
+```
+
+Notes:
+
+- Running as root (sudo) is required for attaching the eBPF program.
 
 ## Build
 

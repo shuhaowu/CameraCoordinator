@@ -79,8 +79,7 @@ func (s *ScriptNotifier) handle(ctx context.Context, event CameraEvent) {
 		return
 	}
 
-	// If script path starts with "./" resolve it relative to the config
-	// file directory so users can write "./on.sh" in their config.
+	// If script path starts with "/" resolve it relative to the basedir.
 	if strings.HasPrefix(script, "./") && s.cfg.BaseDir != "" {
 		script = filepath.Join(s.cfg.BaseDir, script)
 	}
@@ -91,7 +90,8 @@ func (s *ScriptNotifier) handle(ctx context.Context, event CameraEvent) {
 		"device", event.VideoDevice,
 	)
 
-	cmd := s.commandContext(ctx, script, event.Type.String(), event.VideoDevice)
+	cmd := s.commandContext(ctx, script)
+	cmd.Env = append(os.Environ(), "CAMERA_COORDINATOR_DEVICE="+event.VideoDevice)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

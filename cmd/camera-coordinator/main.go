@@ -2,42 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 
 	"github.com/shuhaowu/cameracoordinator"
 )
 
-// defaultConfig contains the built-in configuration used when no external
-// file is provided.  It enables the EBPF vb2_ioctl detector and the print
-// notifier.
-var defaultConfig = AppConfig{
-	Detectors: DetectorConfig{
-		EBPFVb2Ioctl: struct {
-			Enabled bool `json:"enabled,omitempty"`
-		}{Enabled: true},
-	},
-	Notifiers: NotifierConfig{
-		Print: struct {
-			Enabled bool `json:"enabled,omitempty"`
-		}{Enabled: true},
-		DBus: struct {
-			Enabled bool `json:"enabled,omitempty"`
-		}{Enabled: true},
-	},
-}
-
 func main() {
 	// parse command-line options early so we can configure logging
 	verbose := flag.Bool("verbose", false, "enable debug logging")
-	configPath := flag.String("config", "", "path to JSON configuration file defining detectors and notifiers")
+	onScript := flag.String("on-script", "", "script to run when camera turns on")
+	offScript := flag.String("off-script", "", "script to run when camera turns off")
 	flag.Parse()
 
 	// set default slog level based on verbose flag
@@ -50,51 +30,35 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// prepare configuration; if no path is specified we fall back to the
-	// built-in default that enables ebpf and print notifiers.
-	cfg := defaultConfig
-	configDir := ""
-	if *configPath != "" {
-		f, err := os.Open(*configPath)
-		if err != nil {
-			slog.Error("failed to open config file", "path", *configPath, "err", err)
-			os.Exit(1)
-		}
-		defer f.Close()
-
-		loaded, err := LoadConfig(f)
-		if err != nil {
-			slog.Error("failed to load config", "path", *configPath, "err", err)
-			os.Exit(1)
-		}
-		cfg = loaded
-		// record directory of provided config so notifiers can resolve ./ paths
-		configDir = filepath.Dir(*configPath)
-		// log raw config for debugging
-		if data, err := json.Marshal(cfg); err == nil {
-			slog.Debug("parsed config", "config", string(data))
-		}
+	// Build detectors: EBPF vb2_ioctl is always enabled.
+	detectors := []cameracoordinator.CameraDetector{
+		cameracoordinator.NewEBPFVb2IoctlStreamDetector(),
 	}
 
-	// build detectors and notifiers from configuration (or fall back to defaults)
-	// build detectors always from cfg value
-	detectors := buildDetectors(cfg.Detectors)
+	// Build notifiers: DBus is always enabled; Script notifier enabled only
+	// if an on/off script is provided via flags.
+	var notifiers []cameracoordinator.Notifier
+	notifiers = append(notifiers, cameracoordinator.NewDBusNotifier())
+	if *onScript != "" || *offScript != "" {
 
-	if len(detectors) == 0 {
-		slog.Error("no detectors enabled in configuration")
-		os.Exit(1)
-	}
+		cwd, err := os.Getwd()
+		if err != nil {
+			slog.Error("failed to get current working directory", "err", err)
+			os.Exit(1)
+			return
+		}
 
-	// build notifiers always from cfg value
-	notifiers := buildNotifiers(cfg.Notifiers, configDir)
-	if len(notifiers) == 0 {
-		slog.Error("no notifiers enabled in configuration")
-		os.Exit(1)
+		notifiers = append(notifiers, cameracoordinator.NewScriptNotifier(cameracoordinator.ScriptNotifierConfig{
+			OnScript:  *onScript,
+			OffScript: *offScript,
+			BaseDir:   cwd,
+		}))
 	}
 
 	// Create one output channel per notifier and wire them into the
 	// coordinator. The coordinator fans out deduplicated events to all
-	// channels directly and closes them when Run returns.
+	// channels directly. We close them after Run returns so downstream
+	// notifiers can detect shutdown.
 	notifierChannels := make([]chan cameracoordinator.CameraEvent, len(notifiers))
 	for i := range notifierChannels {
 		notifierChannels[i] = make(chan cameracoordinator.CameraEvent, 1)
@@ -108,7 +72,6 @@ func main() {
 	// finished, close allEvents so the coordinator knows to stop.
 	var detectorWg sync.WaitGroup
 	for _, det := range detectors {
-		det := det
 		detectorWg.Go(func() {
 			inner := slog.With("detector", det.Name())
 			inner.Debug("starting detector")
@@ -122,30 +85,26 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Close allEvents once all detectors are done so the coordinator exits.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		detectorWg.Wait()
 		close(allEvents)
-	}()
+	})
 
 	// Run the coordinator in background; it logs errors itself and returns nil.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	// Close notifier channels once the coordinator is done so all notifiers exit.
+	wg.Go(func() {
 		slog.Info("detecting when camera recording starts/stops...")
 		_ = coord.Run(ctx, allEvents)
-	}()
+		for _, ch := range notifierChannels {
+			close(ch)
+		}
+	})
 
 	// Run each configured notifier against its coordinator output channel.
 	for i, notifier := range notifiers {
-		wg.Add(1)
-		idx := i
-		notif := notifier
-		go func() {
-			defer wg.Done()
-			_ = notif.Run(ctx, notifierChannels[idx])
-		}()
+		wg.Go(func() {
+			_ = notifier.Run(ctx, notifierChannels[i])
+		})
 	}
 
 	wg.Wait()

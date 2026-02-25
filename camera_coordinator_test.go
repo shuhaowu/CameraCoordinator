@@ -445,51 +445,6 @@ func TestCameraCoordinatorFanOut_MultipleEvents(t *testing.T) {
 	}
 }
 
-func TestCameraCoordinatorFanOut_SourceClosedClosesOutputs(t *testing.T) {
-	// When the source (allEvents) channel is closed, Run exits and all output
-	// channels must be subsequently closed. Notifiers depend on this to detect
-	// "no more events" without context awareness.
-	const numOutputs = 2
-	coordinator, outputs := newTestCoordinatorN(numOutputs)
-	allEvents := make(chan CameraEvent)
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		coordinator.Run(context.Background(), allEvents)
-	})
-
-	close(allEvents)
-
-	for i := range numOutputs {
-		assertChannelClosed(t, outputs[i], eventTimeout, "output channel after source close")
-	}
-
-	wg.Wait()
-}
-
-func TestCameraCoordinatorFanOut_ContextCancelClosesOutputs(t *testing.T) {
-	// Cancelling ctx causes Run to return and all output channels to be closed,
-	// even if the source channel is never closed. This simulates graceful shutdown.
-	const numOutputs = 2
-	coordinator, outputs := newTestCoordinatorN(numOutputs)
-	allEvents := make(chan CameraEvent) // never closed intentionally
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		coordinator.Run(ctx, allEvents)
-	})
-
-	cancel()
-
-	for i := range numOutputs {
-		assertChannelClosed(t, outputs[i], eventTimeout, "output channel after context cancel")
-	}
-
-	wg.Wait()
-}
-
 func TestCameraCoordinatorFanOut_ZeroOutputs(t *testing.T) {
 	// The coordinator works correctly when there are no output channels: events
 	// are consumed and deduplicated from the source without blocking, and Run

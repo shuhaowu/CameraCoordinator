@@ -12,9 +12,6 @@ import (
 // one RecordingOn when the first detector goes active for a device, one
 // RecordingOff when the last one goes inactive) and fans out the resulting
 // events to a set of output channels provided at construction time.
-//
-// Each output channel is intended for a single Notifier. All output channels
-// are closed when Run returns so that downstream consumers can detect shutdown.
 type CameraCoordinator struct {
 	outputs []chan CameraEvent
 	started atomic.Bool
@@ -25,8 +22,7 @@ type CameraCoordinator struct {
 }
 
 // NewCameraCoordinator creates a CameraCoordinator that fans out deduplicated
-// camera events to the supplied output channels. The caller creates and owns
-// the channels; the coordinator closes them when Run returns.
+// camera events to the supplied output channels.
 func NewCameraCoordinator(outputs []chan CameraEvent) *CameraCoordinator {
 	return &CameraCoordinator{
 		outputs:      outputs,
@@ -49,20 +45,11 @@ func NewCameraCoordinator(outputs []chan CameraEvent) *CameraCoordinator {
 // The events in the buffer are not guaranteed to be processed on context
 // cancellation.
 //
-// All output channels are closed before Run returns so that downstream
-// consumers (notifiers) can detect shutdown.
-//
 // Run can only be called once.
 func (c *CameraCoordinator) Run(ctx context.Context, events <-chan CameraEvent) error {
 	if c.started.Swap(true) {
 		return errors.New("camera coordinator can only be started once")
 	}
-
-	defer func() {
-		for _, ch := range c.outputs {
-			close(ch)
-		}
-	}()
 
 	logger := slog.With("component", "CameraCoordinator")
 

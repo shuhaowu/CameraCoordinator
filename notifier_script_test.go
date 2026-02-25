@@ -19,11 +19,11 @@ type call struct {
 
 // fakeCommand returns a fake commandContext implementation along with a
 // channel that receives every invocation. The returned function can be
-// assigned directly to a ScriptNotifier's commandContext field
+// assigned directly to a ScriptNotifier's commandContext field.
 func fakeCommand(fail bool) (func(ctx context.Context, name string, args ...string) *exec.Cmd, <-chan call) {
 	ch := make(chan call, 100)
 	fn := func(ctx context.Context, name string, args ...string) *exec.Cmd {
-		ch <- call{name, args}
+		ch <- call{script: name, args: args}
 		if fail {
 			return exec.CommandContext(ctx, "false")
 		}
@@ -75,8 +75,8 @@ func TestScriptNotifier_OnEvent(t *testing.T) {
 	if c == nil {
 		t.Fatal("expected a call but got none")
 	}
-	if c.script != "on" || len(c.args) != 2 || c.args[0] != "recording_on" || c.args[1] != "video0" {
-		t.Errorf("unexpected call: %+v", c)
+	if c.script != "on" || len(c.args) != 0 {
+		t.Errorf("unexpected call: script=%q args=%v", c.script, c.args)
 	}
 }
 
@@ -99,8 +99,8 @@ func TestScriptNotifier_OffEvent(t *testing.T) {
 	if c == nil {
 		t.Fatal("expected a call but got none")
 	}
-	if c.script != "off" || len(c.args) != 2 || c.args[0] != "recording_off" || c.args[1] != "video1" {
-		t.Errorf("unexpected call: %+v", c)
+	if c.script != "off" || len(c.args) != 0 {
+		t.Errorf("unexpected call: script=%q args=%v", c.script, c.args)
 	}
 }
 
@@ -242,11 +242,11 @@ func TestScriptNotifier_BothScripts(t *testing.T) {
 		seen[c.script] = true
 		switch c.script {
 		case "on":
-			if len(c.args) != 2 || c.args[0] != "recording_on" || c.args[1] != "video2" {
+			if len(c.args) != 0 {
 				t.Errorf("unexpected on call args: %+v", c.args)
 			}
 		case "off":
-			if len(c.args) != 2 || c.args[0] != "recording_off" || c.args[1] != "video2" {
+			if len(c.args) != 0 {
 				t.Errorf("unexpected off call args: %+v", c.args)
 			}
 		default:

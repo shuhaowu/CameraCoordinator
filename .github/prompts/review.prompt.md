@@ -22,4 +22,4 @@ Once the review is completed, the review comments should be in two sections: an 
 - The overall comment should summarize the findings and identify the top issues that can cause breakages. It should include an overall "feeling" for how good the code is. It should also include a description of how the code reviewed works. Nitpick comments can be left in the inline comments.
 - The inline comments should be organized with file, function, and line number. Each inline comment should be numbered so it can be addressed to (like inline comment #3). Comments should explain why the code is problematic and how to fix it. Suggest code changes if the fix is small, otherwise just describe what needs to be done.
 
-Use git commands to show the diff of the code. Do not edit any code. Make suggestions only.
+Use git commands to show the diff of the code. Do not edit any code. Do not make commits or change the state of the git tree. Make suggestions only.
