@@ -2,22 +2,31 @@
 
 ## Overview
 
-CameraCoordinator is a small Go library and daemon that detects when a webcam
-or V4L2 device is turned on or off on Linux and exposes those events so other
-tools can perform arbitrary actions (notifications, scripts, ambient lighting
-control, etc.). It bundles detectors (for example an eBPF-based vb2 ioctl
-detector), notifiers, and example scripts to make integration straightforward.
+CameraCoordinator is a Golang based library and daemon that detects when a
+webcam is turned on or off on Linux. On these events, a DBus event is triggered
+and scripts can be optionally executed. This allows for things such as:
 
-## Key features
+- Automatically controlling USB-based stream lights such as the Logitech Litra
+  lights via the [`autolight`](./autolight/) program.
+- Sending a notification that the camera has been turned on to the desktop via
+  a [custom script](./examples/notification).
 
-- Detect camera on/off events on Linux (V4L2 / videobuf2 ioctl tracing).
-- Pluggable detectors and notifiers (run scripts, print events, broadcast).
-- Example udev rules and on/off scripts to integrate with host systems.
+## How it works under the hood
 
-## Requirements
+By default, we use eBPF to trace specific kernel functions
+(`vb2_ioctl_streamon`/`vb2_ioctl_streamoff` and others) to determine when
+cameras are turned on or off. Upon detection of camera on/off, a signal is then
+sent via dbus's system bus and/or a script is executed according to
+configuration.
 
-- Linux with kernel and distribution that support eBPF and V4L2 devices.
-- Go 1.18+ to build from source.
+## Run
+
+CameraCoordinator is a root daemon as it needs to insert a BPF program to the
+kernel. Run it with the following command:
+
+```bash
+sudo ./camera-coordinator
+```
 
 ## Build
 
@@ -26,54 +35,21 @@ Clone the repository and build the daemon binary:
 ```bash
 git clone https://github.com/your-org/CameraCoordinator.git
 cd CameraCoordinator
-go generate ./...
+go generate ./... # Optional. Can try without it first.
 go build -o camera-coordinator ./cmd/camera-coordinator
 ```
 
-## Run
+The `go generate ./...` step will compile the BPF code. This requires `clang`
+and `llvm` to be installed on your system.
 
-The `camera-coordinator` binary accepts an optional JSON configuration via
-`-config /path/to/file.json`. When no config is provided the program uses a
-built-in default: the eBPF `vb2_ioctl` detector and the `print` notifier are
-enabled automatically.
+# Autolight
 
-Run with an example config included in this repo:
+[Autolight](./autolight/) is an user daemon that's bundled in this repo that
+listens to the DBus signal for camera on/off events and will turn on/off
+[Logitech Litra](https://www.logitech.com/en-ca/shop/c/cameras-lighting) lights.
 
-```bash
-sudo ./camera-coordinator
-```
+Running Autolight together with CameraCoordinator as two background services
+will allow the lights to turn automatically on and off based on the state of the
+webcam:
 
-## Configuration
-
-The configuration is JSON and controls which detectors and notifiers are
-enabled. This is passed to the `camera-coordinator -config <file>` command. A
-minimal example that enables the eBPF detector and the print notifier looks
-like:
-
-```json
-{
-  "detectors": {
-    "ebpf_vb2_ioctl": {
-      "enabled": true
-    }
-  },
-  "notifiers": {
-    "print": {
-      "enabled": true
-    },
-    "script": {
-      "enabled": true,
-      "on_script": "./on.sh",
-      "off_script": "./off.sh"
-    }
-  }
-}
-```
-
-Paths starting with "./" in the `on_script` and `off_script` fields are resolved
-relative to the directory containing the JSON configuration file. When invoked
-the script is passed two arguments: the event type and the video device.  The
-event type argument will be either `recording_on` or `recording_off` (from
-`CameraEventType`), and the video device argument is the V4L2 device name, for
-example `video0`. So for example, `./on.sh recording_on video0` is a possible
-invocation.
+![Logitech Litra Glow automatically turning on and off when web cam turns on and off on Linux](demo.avif)
