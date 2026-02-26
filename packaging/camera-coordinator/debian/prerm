@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+  remove)
+    systemctl stop camera-coordinator.service || true
+    deb-systemd-helper purge camera-coordinator.service
+    ;;
+esac
+
+exit 0

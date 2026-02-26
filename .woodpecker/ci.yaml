@@ -14,10 +14,22 @@ steps:
       - .woodpecker/deps.sh
       - .woodpecker/build.sh
 
+  - name: package
+    image: golang:1.26
+    depends_on:
+      - test
+      - build
+    when:
+      - event: push
+        branch: main
+    commands:
+      - .woodpecker/package.sh
+
   - name: upload
     image: woodpeckerci/plugin-s3
     depends_on:
       - build
+      - package
     when:
       - event: push
         branch: main

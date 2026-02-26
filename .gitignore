@@ -1,1 +1,5 @@
 /camera-coordinator
+/build
+/packaging/build
+/packaging/camera-coordinator/deb-build
+/packaging/camera-coordinator-autolight/deb-build

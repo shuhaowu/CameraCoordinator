@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+  systemctl daemon-reload
+  deb-systemd-helper enable camera-coordinator.service
+  systemctl start camera-coordinator.service
+fi
+
+exit 0

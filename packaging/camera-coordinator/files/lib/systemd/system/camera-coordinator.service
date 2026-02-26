@@ -1,0 +1,12 @@
+[Unit]
+Description=Monitor camera for on/off events
+Requires=dbus.service
+After=dbus.service
+
+[Service]
+Type=simple
+Restart=on-failure
+ExecStart=/usr/local/bin/camera-coordinator -on-script /usr/lib/camera-coordinator/run-on-scripts -off-script /usr/lib/camera-coordinator/run-off-scripts
+
+[Install]
+WantedBy=multi-user.target

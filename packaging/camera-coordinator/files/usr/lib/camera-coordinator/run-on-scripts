@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -xe
+
+if [ -d /etc/camera-coordinator/on-scripts.d ]; then
+  run-parts /etc/camera-coordinator/on-scripts.d
+fi
+
