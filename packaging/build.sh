@@ -52,4 +52,4 @@ rm -rf "$DIR/build"
 mkdir -p "$DIR/build"
 # Build both packages using the common function. Add or remove calls as needed.
 build_pkg "camera-coordinator" "./cmd/camera-coordinator" "camera-coordinator"
-build_pkg "camera-coordinator-autolight" "./autolight" "camera-coordinator-autolight"
+# build_pkg "camera-coordinator-autolight" "./autolight" "camera-coordinator-autolight"
