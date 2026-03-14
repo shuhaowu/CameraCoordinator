@@ -15,14 +15,16 @@ import (
 	"github.com/shuhaowu/cameracoordinator"
 )
 
+const disableLightControlLabel = "Disable Light Control"
+const enableLightControlLabel = "Enable Light Control"
+
 type App struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mut     sync.Mutex
-	enabled bool
+	mut      sync.Mutex
+	disabled bool
 
-	cfg           AppConfig
 	activeCameras map[string]struct{}
 
 	conn *dbus.Conn
@@ -35,13 +37,12 @@ type App struct {
 	lightsItems map[string]*tray.MenuItem
 }
 
-func NewApp(ctx context.Context, cfg AppConfig) (*App, error) {
+func NewApp(ctx context.Context) (*App, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	app := &App{
 		ctx:           ctx,
 		cancel:        cancel,
 		mut:           sync.Mutex{},
-		cfg:           cfg,
 		activeCameras: make(map[string]struct{}),
 	}
 
@@ -60,7 +61,7 @@ func NewApp(ctx context.Context, cfg AppConfig) (*App, error) {
 	menu := root.Menu()
 
 	enableItem, err := menu.AddChild(
-		tray.MenuItemLabel("Enable"),
+		tray.MenuItemLabel(disableLightControlLabel),
 		tray.MenuItemHandler(tray.ClickedHandler(app.onEnableClicked)),
 	)
 	if err != nil {
@@ -88,13 +89,13 @@ func (a *App) onEnableClicked(data any, timestamp uint32) error {
 	a.mut.Lock()
 	defer a.mut.Unlock()
 
-	a.enabled = !a.enabled
+	a.disabled = !a.disabled
 
 	var label string
-	if a.enabled {
-		label = "Disable"
+	if a.disabled {
+		label = enableLightControlLabel
 	} else {
-		label = "Enable"
+		label = disableLightControlLabel
 	}
 
 	a.enableItem.SetProps(tray.MenuItemLabel(label))
@@ -171,11 +172,6 @@ func (a *App) handleSignal(sig *dbus.Signal) {
 		"bus_info", body.BusInfo,
 	)
 
-	if !a.cfg.matchesCamera(body.Card) {
-		slog.Debug("ignoring event for non-matching camera", "card", body.Card)
-		return
-	}
-
 	switch body.Type {
 	case uint32(cameracoordinator.CameraEventRecordingOn):
 		wasEmpty := len(a.activeCameras) == 0
@@ -183,10 +179,11 @@ func (a *App) handleSignal(sig *dbus.Signal) {
 
 		if wasEmpty {
 			slog.Info("camera recording started, turning lights on", "video_device", body.VideoDevice, "card", body.Card)
-			a.setLights(true)
+			a.handleCameraOn()
 		} else {
 			slog.Info("additional camera started recording", "video_device", body.VideoDevice, "card", body.Card, "active_count", len(a.activeCameras))
-			a.setLights(true)
+			// We call handleCameraOn for every camera to try to converge the state if it somehow got corrupted before.
+			a.handleCameraOn()
 		}
 
 	case uint32(cameracoordinator.CameraEventRecordingOff):
@@ -194,7 +191,7 @@ func (a *App) handleSignal(sig *dbus.Signal) {
 
 		if len(a.activeCameras) == 0 {
 			slog.Info("all cameras stopped recording, turning lights off", "video_device", body.VideoDevice, "card", body.Card)
-			a.setLights(false)
+			a.handleCameraOff()
 		} else {
 			slog.Info("camera stopped but others still active", "video_device", body.VideoDevice, "card", body.Card, "active_count", len(a.activeCameras))
 		}
@@ -204,16 +201,31 @@ func (a *App) handleSignal(sig *dbus.Signal) {
 	}
 }
 
-func (a *App) setLights(on bool) {
+func (a *App) handleCameraOn() {
 	a.mut.Lock()
-	enabled := a.enabled
-	a.mut.Unlock()
-
-	if !enabled {
-		slog.Debug("lights control disabled, skipping", "on", on)
-		return
+	defer a.mut.Unlock()
+	if a.trayRoot != nil {
+		a.trayRoot.SetProps(tray.ItemIconName("camera-on"))
 	}
 
+	if !a.disabled {
+		a.setLights(true)
+	}
+}
+
+func (a *App) handleCameraOff() {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+	if a.trayRoot != nil {
+		a.trayRoot.SetProps(tray.ItemIconName("camera-off"))
+	}
+
+	if !a.disabled {
+		a.setLights(false)
+	}
+}
+
+func (a *App) setLights(on bool) {
 	devices := lib.ListDevices()
 	if len(devices) == 0 {
 		slog.Warn("no Litra devices found")
@@ -221,11 +233,6 @@ func (a *App) setLights(on bool) {
 	}
 
 	for _, d := range devices {
-		if !a.cfg.matchesLight(d.Name) {
-			slog.Debug("skipping non-matching light", "name", d.Name, "index", d.Index)
-			continue
-		}
-
 		if on {
 			slog.Info("turning on light", "name", d.Name, "index", d.Index)
 			lib.LightOn(d.Index)
@@ -242,7 +249,6 @@ func (a *App) Close() {
 
 func main() {
 	verbose := flag.Bool("verbose", false, "enable debug logging")
-	configPath := flag.String("config", "", "path to JSON configuration file")
 	flag.Parse()
 
 	level := slog.LevelInfo
@@ -254,22 +260,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	var cfg AppConfig
-	if *configPath != "" {
-		f, err := os.Open(*configPath)
-		if err != nil {
-			slog.Error("failed to open config file", "path", *configPath, "err", err)
-			os.Exit(1)
-		}
-		cfg, err = LoadConfig(f)
-		f.Close()
-		if err != nil {
-			slog.Error("failed to load config", "path", *configPath, "err", err)
-			os.Exit(1)
-		}
-	}
-
-	app, err := NewApp(ctx, cfg)
+	app, err := NewApp(ctx)
 	if err != nil {
 		slog.Error("failed to create app", "err", err)
 		os.Exit(1)
