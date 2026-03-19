@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -18,6 +19,10 @@ import (
 const disableLightControlLabel = "Disable Light Control"
 const enableLightControlLabel = "Enable Light Control"
 
+const cameraStatusOffLabel = "Camera: Off"
+const cameraStatusOnLabel = "Camera: On"
+const cameraStatusUnknownLabel = "Camera: Unknown"
+
 type App struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -29,10 +34,12 @@ type App struct {
 
 	conn *dbus.Conn
 
-	trayRoot   *tray.Item
-	enableItem *tray.MenuItem
-	quitItem   *tray.MenuItem
+	trayRoot         *tray.Item
+	cameraStatusItem *tray.MenuItem
+	enableItem       *tray.MenuItem
+	quitItem         *tray.MenuItem
 
+	// TODO: we could add menu items for each camera and light to show their status and allow manual control, but that can be future work
 	cameraItems map[string]*tray.MenuItem
 	lightsItems map[string]*tray.MenuItem
 }
@@ -49,9 +56,8 @@ func NewApp(ctx context.Context) (*App, error) {
 	root, err := tray.New(
 		tray.ItemID("io.github.shuhaowu.autolight"),
 		tray.ItemTitle("Autolight"),
-		tray.ItemIconName("webcam"),
-		tray.ItemOverlayIconName("emblem-important"),
-		tray.ItemToolTip("", nil, "Autolight", "Automatically control lights based on camera usage."),
+		tray.ItemIconPixmap(cameraUnknownIcons...),
+		tray.ItemToolTip("", nil, "Autolight", "Camera state is unknown. Turn a camera on or off to set it."),
 		tray.ItemIsMenu(true),
 	)
 	if err != nil {
@@ -59,6 +65,15 @@ func NewApp(ctx context.Context) (*App, error) {
 	}
 
 	menu := root.Menu()
+
+	cameraStatusItem, err := menu.AddChild(
+		tray.MenuItemLabel(cameraStatusUnknownLabel),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	menu.AddChild(tray.MenuItemType(tray.Separator))
 
 	enableItem, err := menu.AddChild(
 		tray.MenuItemLabel(disableLightControlLabel),
@@ -79,6 +94,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	}
 
 	app.trayRoot = root
+	app.cameraStatusItem = cameraStatusItem
 	app.enableItem = enableItem
 	app.quitItem = quitItem
 
@@ -204,9 +220,13 @@ func (a *App) handleSignal(sig *dbus.Signal) {
 func (a *App) handleCameraOn() {
 	a.mut.Lock()
 	defer a.mut.Unlock()
-	if a.trayRoot != nil {
-		a.trayRoot.SetProps(tray.ItemIconName("camera-on"))
-	}
+
+	a.trayRoot.SetProps(
+		tray.ItemIconPixmap(cameraOnIcons...),
+		tray.ItemToolTip("", nil, "Autolight", "Camera is on."),
+	)
+
+	a.cameraStatusItem.SetProps(tray.MenuItemLabel(cameraStatusOnLabel))
 
 	if !a.disabled {
 		a.setLights(true)
@@ -216,9 +236,13 @@ func (a *App) handleCameraOn() {
 func (a *App) handleCameraOff() {
 	a.mut.Lock()
 	defer a.mut.Unlock()
-	if a.trayRoot != nil {
-		a.trayRoot.SetProps(tray.ItemIconName("camera-off"))
-	}
+
+	a.trayRoot.SetProps(
+		tray.ItemIconPixmap(cameraOffIcons...),
+		tray.ItemToolTip("", nil, "Autolight", "Camera is off."),
+	)
+
+	a.cameraStatusItem.SetProps(tray.MenuItemLabel(cameraStatusOffLabel))
 
 	if !a.disabled {
 		a.setLights(false)
@@ -249,7 +273,13 @@ func (a *App) Close() {
 
 func main() {
 	verbose := flag.Bool("verbose", false, "enable debug logging")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(Version)
+		return
+	}
 
 	level := slog.LevelInfo
 	if *verbose {

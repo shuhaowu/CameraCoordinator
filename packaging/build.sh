@@ -20,8 +20,8 @@ build_pkg() {
   echo "building ${bin_name} for package $1..."
   go build -o "$build_dir/usr/local/bin/$bin_name" "$src_dir"
 
-  echo "copying packaging files for $1..."
   if [ -d "$pkg_dir/files" ]; then
+    echo "copying packaging files for $1..."
     cp -a "$pkg_dir/files/." "$build_dir/"
   fi
 
@@ -52,4 +52,4 @@ rm -rf "$DIR/build"
 mkdir -p "$DIR/build"
 # Build both packages using the common function. Add or remove calls as needed.
 build_pkg "camera-coordinator" "./cmd/camera-coordinator" "camera-coordinator"
-# build_pkg "camera-coordinator-autolight" "./autolight" "camera-coordinator-autolight"
+build_pkg "camera-coordinator-autolight" "./autolight" "camera-coordinator-autolight"

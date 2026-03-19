@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -18,7 +19,13 @@ func main() {
 	verbose := flag.Bool("verbose", false, "enable debug logging")
 	onScript := flag.String("on-script", "", "script to run when camera turns on")
 	offScript := flag.String("off-script", "", "script to run when camera turns off")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(cameracoordinator.Version)
+		return
+	}
 
 	// set default slog level based on verbose flag
 	level := slog.LevelInfo
