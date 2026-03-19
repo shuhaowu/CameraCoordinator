@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Camera Coordinator Autolight
+Comment=Turns on/off screen backlight when webcams turn on/off and monitor the camera on/off status
+Exec=camera-coordinator-autolight
+Icon=camera-coordinator-autolight
+Categories=Utility;
+StartupNotify=false

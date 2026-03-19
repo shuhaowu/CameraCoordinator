@@ -54,14 +54,39 @@ go build -o camera-coordinator ./cmd/camera-coordinator
 The `go generate ./...` step will compile the BPF code. This requires `clang`
 and `llvm` to be installed on your system.
 
+## Install
+
+Pre-built `.deb` packages for `amd64` are available on the
+[GitHub Releases page](https://github.com/shuhaowu/cameracoordinator/releases).
+
+### camera-coordinator
+
+Download and install the `camera-coordinator` package:
+
+```bash
+sudo dpkg -i camera-coordinator_<version>_amd64.deb
+```
+
+This installs and starts the `camera-coordinator` systemd service, which runs
+at boot.
+
 # Autolight
 
 [Autolight](./autolight/) is an user daemon that's bundled in this repo that
 listens to the DBus signal for camera on/off events and will turn on/off
 [Logitech Litra](https://www.logitech.com/en-ca/shop/c/cameras-lighting) lights.
 
-Running Autolight together with CameraCoordinator as two background services
-will allow the lights to turn automatically on and off based on the state of the
-webcam:
-
 ![Logitech Litra Glow automatically turning on and off when web cam turns on and off on Linux](demo.avif)
+
+## Install
+
+Pre-built `.deb` packages for `amd64` are available on the
+[GitHub Releases page](https://github.com/shuhaowu/cameracoordinator/releases).
+
+Make sure to also install the camera-coordinator package as above.
+
+```bash
+sudo dpkg -i camera-coordinator-autolight_<version>_amd64.deb
+```
+
+Launch **Camera Coordinator Autolight** from your application launcher.

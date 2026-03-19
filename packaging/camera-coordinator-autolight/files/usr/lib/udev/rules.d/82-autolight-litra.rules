@@ -1,0 +1,5 @@
+# Litra glow
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c900", GROUP="plugdev", MODE="0660"
+
+# Litra beam
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c901", GROUP="plugdev", MODE="0660"
