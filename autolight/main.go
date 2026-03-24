@@ -23,6 +23,9 @@ const cameraStatusOffLabel = "Camera: Off"
 const cameraStatusOnLabel = "Camera: On"
 const cameraStatusUnknownLabel = "Camera: Unknown"
 
+const toggleLightOnLabel = "Turn Light On"
+const toggleLightOffLabel = "Turn Light Off"
+
 type App struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -36,8 +39,11 @@ type App struct {
 
 	trayRoot         *tray.Item
 	cameraStatusItem *tray.MenuItem
+	toggleLightItem  *tray.MenuItem
 	enableItem       *tray.MenuItem
 	quitItem         *tray.MenuItem
+
+	lightOn bool
 
 	// TODO: we could add menu items for each camera and light to show their status and allow manual control, but that can be future work
 	cameraItems map[string]*tray.MenuItem
@@ -75,6 +81,14 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	menu.AddChild(tray.MenuItemType(tray.Separator))
 
+	toggleLightItem, err := menu.AddChild(
+		tray.MenuItemLabel(toggleLightOnLabel),
+		tray.MenuItemHandler(tray.ClickedHandler(app.onToggleLightClicked)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	enableItem, err := menu.AddChild(
 		tray.MenuItemLabel(disableLightControlLabel),
 		tray.MenuItemHandler(tray.ClickedHandler(app.onEnableClicked)),
@@ -95,10 +109,19 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	app.trayRoot = root
 	app.cameraStatusItem = cameraStatusItem
+	app.toggleLightItem = toggleLightItem
 	app.enableItem = enableItem
 	app.quitItem = quitItem
 
 	return app, nil
+}
+
+func (a *App) onToggleLightClicked(data any, timestamp uint32) error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	a.setLights(!a.lightOn)
+	return nil
 }
 
 func (a *App) onEnableClicked(data any, timestamp uint32) error {
@@ -250,6 +273,16 @@ func (a *App) handleCameraOff() {
 }
 
 func (a *App) setLights(on bool) {
+	a.lightOn = on
+
+	var toggleLabel string
+	if on {
+		toggleLabel = toggleLightOffLabel
+	} else {
+		toggleLabel = toggleLightOnLabel
+	}
+	a.toggleLightItem.SetProps(tray.MenuItemLabel(toggleLabel))
+
 	devices := lib.ListDevices()
 	if len(devices) == 0 {
 		slog.Warn("no Litra devices found")
