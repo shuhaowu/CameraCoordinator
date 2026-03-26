@@ -16,8 +16,8 @@ import (
 	"github.com/shuhaowu/cameracoordinator"
 )
 
-const disableLightControlLabel = "Disable Light Control"
-const enableLightControlLabel = "Enable Light Control"
+const disableLightControlLabel = "Disable auto light control"
+const enableLightControlLabel = "Enable auto light control"
 
 const cameraStatusOffLabel = "Camera: Off"
 const cameraStatusOnLabel = "Camera: On"
@@ -25,6 +25,12 @@ const cameraStatusUnknownLabel = "Camera: Unknown"
 
 const toggleLightOnLabel = "Turn Light On"
 const toggleLightOffLabel = "Turn Light Off"
+
+const brightnessMenuLabel = "Brightness"
+const colorTempMenuLabel = "Color Temperature"
+
+var brightnessPresets = []int{0, 25, 50, 75, 100}
+var colorTempPresets = []int{2700, 3500, 4500, 5500, 6500}
 
 type App struct {
 	ctx    context.Context
@@ -44,10 +50,6 @@ type App struct {
 	quitItem         *tray.MenuItem
 
 	lightOn bool
-
-	// TODO: we could add menu items for each camera and light to show their status and allow manual control, but that can be future work
-	cameraItems map[string]*tray.MenuItem
-	lightsItems map[string]*tray.MenuItem
 }
 
 func NewApp(ctx context.Context) (*App, error) {
@@ -79,6 +81,14 @@ func NewApp(ctx context.Context) (*App, error) {
 		return nil, err
 	}
 
+	enableItem, err := menu.AddChild(
+		tray.MenuItemLabel(disableLightControlLabel),
+		tray.MenuItemHandler(tray.ClickedHandler(app.onEnableClicked)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	menu.AddChild(tray.MenuItemType(tray.Separator))
 
 	toggleLightItem, err := menu.AddChild(
@@ -89,12 +99,50 @@ func NewApp(ctx context.Context) (*App, error) {
 		return nil, err
 	}
 
-	enableItem, err := menu.AddChild(
-		tray.MenuItemLabel(disableLightControlLabel),
-		tray.MenuItemHandler(tray.ClickedHandler(app.onEnableClicked)),
+	brightnessItem, err := menu.AddChild(
+		tray.MenuItemLabel(brightnessMenuLabel),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, level := range brightnessPresets {
+		value := level
+		_, err = brightnessItem.AddChild(
+			tray.MenuItemLabel(fmt.Sprintf("%d%%", value)),
+			tray.MenuItemHandler(tray.ClickedHandler(func(data any, timestamp uint32) error {
+				app.mut.Lock()
+				defer app.mut.Unlock()
+				app.setBrightness(value)
+				return nil
+			})),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	colorTempItem, err := menu.AddChild(
+		tray.MenuItemLabel(colorTempMenuLabel),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, temp := range colorTempPresets {
+		value := temp
+		_, err = colorTempItem.AddChild(
+			tray.MenuItemLabel(fmt.Sprintf("%dk", value)),
+			tray.MenuItemHandler(tray.ClickedHandler(func(data any, timestamp uint32) error {
+				app.mut.Lock()
+				defer app.mut.Unlock()
+				app.setColorTemperature(value)
+				return nil
+			})),
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	menu.AddChild(tray.MenuItemType(tray.Separator))
@@ -297,6 +345,34 @@ func (a *App) setLights(on bool) {
 			slog.Info("turning off light", "name", d.Name, "index", d.Index)
 			lib.LightOff(d.Index)
 		}
+	}
+}
+
+func (a *App) setBrightness(level int) {
+	devices := lib.ListDevices()
+	if len(devices) == 0 {
+		slog.Warn("no Litra devices found")
+		return
+	}
+
+	slog.Info("setting brightness", "level", level)
+	for _, d := range devices {
+		slog.Debug("setting brightness on device", "name", d.Name, "index", d.Index, "level", level)
+		lib.LightBrightness(d.Index, level)
+	}
+}
+
+func (a *App) setColorTemperature(temp int) {
+	devices := lib.ListDevices()
+	if len(devices) == 0 {
+		slog.Warn("no Litra devices found")
+		return
+	}
+
+	slog.Info("setting color temperature", "temperature", temp)
+	for _, d := range devices {
+		slog.Debug("setting color temperature on device", "name", d.Name, "index", d.Index, "temp", temp)
+		lib.LightTemperature(d.Index, uint16(temp))
 	}
 }
 
