@@ -78,6 +78,10 @@ listens to the DBus signal for camera on/off events and will turn on/off
 
 ![Logitech Litra Glow automatically turning on and off when web cam turns on and off on Linux](demo.avif)
 
+If you don't have a light, you can also use it as a camera indicator as it will be shown in your system tray:
+
+![Autolight's UI](demo.png)
+
 ## Install
 
 Pre-built `.deb` packages for `amd64` are available on the
