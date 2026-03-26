@@ -4,18 +4,18 @@ when:
 
 steps:
   - name: test
-    image: golang:1.26
+    image: golang:1.26.1
     commands:
       - .woodpecker/test.sh
 
   - name: build
-    image: golang:1.26
+    image: golang:1.26.1
     commands:
       - .woodpecker/deps.sh
       - .woodpecker/build.sh
 
   - name: package
-    image: golang:1.26
+    image: golang:1.26.1
     depends_on:
       - test
       - build
