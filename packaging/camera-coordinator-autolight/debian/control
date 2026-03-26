@@ -1,5 +1,5 @@
 Package: camera-coordinator-autolight
-Version: 1.0.0
+Version: 1.1.0
 Section: video
 Architecture: amd64
 Maintainer: Shuhao Wu <shuhao@shuhaowu.com>
