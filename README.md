@@ -40,6 +40,22 @@ Notes:
 
 - Running as root (sudo) is required for attaching the eBPF program.
 
+## DBus signal emitted
+
+CameraCoordinator emits a DBus signal on the system bus using:
+
+- Object path: `/io/github/shuhaowu/CameraCoordinator`
+- Interface: `io.github.shuhaowu.CameraCoordinator`
+- Signal name (member): `CameraEvent`
+- Fully-qualified signal: `io.github.shuhaowu.CameraCoordinator.CameraEvent`
+
+The signal body is a struct with fields:
+
+- `Type`: numeric event type (0=off, 1=on) (see `CameraEvent.Type`)
+- `VideoDevice`: e.g. `/dev/video0`
+- `Card`: video card name, usually a friendly name
+- `BusInfo`: connection path info (e.g. `usb-...`)
+
 ## Build
 
 Clone the repository and build the daemon binary:
@@ -69,6 +85,10 @@ sudo dpkg -i camera-coordinator_<version>_amd64.deb
 
 This installs and starts the `camera-coordinator` systemd service, which runs
 at boot.
+
+The installed version will automatically run all scripts in alphanumeric order
+in the directories `/etc/camera-coordinator/on-scripts.d` and
+`/etc/camera-coordinator/off-scripts.d` for on and off events respectively.
 
 # Autolight
 
